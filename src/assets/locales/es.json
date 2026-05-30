@@ -1,0 +1,11 @@
+{
+  "home": "Inicio",
+  "settings": "Configuración",
+  "greeting": "¡Hola, {{name}}!",
+  "fetchData": "Obtener datos del usuario",
+  "toggleTheme": "Alternar tema",
+  "changeLanguage": "Cambiar idioma a Inglés",
+  "loading": "Cargando...",
+  "error": "Error al obtener datos",
+  "profile": "Perfil"
+}

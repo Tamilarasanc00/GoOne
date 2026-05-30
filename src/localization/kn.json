@@ -1,0 +1,33 @@
+{
+  "common": {
+    "continue": "ಮುಂದುವರಿಸಿ",
+    "cancel": "ರದ್ದುಗೊಳಿಸಿ",
+    "search": "ಹುಡುಕಿ...",
+    "save": "ಉಳಿಸಿ",
+    "ok": "ಸರಿ"
+  },
+  "auth": {
+    "chooseLanguage": "ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "welcome": "ಸ್ವಾಗತ",
+    "enterMobile": "ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ",
+    "sendOtp": "OTP ಕಳುಹಿಸಿ",
+    "continueGuest": "ಅತಿಥಿಯಾಗಿ ಮುಂದುವರಿಸಿ"
+  },
+  "navigation": {
+    "home": "ಮುಖಪುಟ",
+    "search": "ಹುಡುಕಾಟ",
+    "bookings": "ಬುಕಿಂಗ್‌ಗಳು",
+    "notifications": "ಎಚ್ಚರಿಕೆಗಳು",
+    "profile": "ಪ್ರೊಫೈಲ್"
+  },
+  "dashboard": {
+    "shops": "ಅಂಗಡಿಗಳು",
+    "farmers": "ರೈತರು",
+    "services": "ಸೇವೆಗಳು",
+    "rentals": "ಬಾಡಿಗೆಗಳು",
+    "jobs": "ಉದ್ಯೋಗಗಳು",
+    "nearbyHelp": "ಹತ್ತಿರದ ಸಹಾಯ",
+    "offers": "ಕೊಡುಗೆಗಳು",
+    "subtitle": "ನಿಮ್ಮ ಸಮುದಾಯವನ್ನು ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ"
+  }
+}

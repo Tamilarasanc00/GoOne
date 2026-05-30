@@ -1,0 +1,11 @@
+{
+  "home": "Home",
+  "settings": "Settings",
+  "greeting": "Hello, {{name}}!",
+  "fetchData": "Fetch User Data",
+  "toggleTheme": "Toggle Theme",
+  "changeLanguage": "Change Language to Spanish",
+  "loading": "Loading...",
+  "error": "Error fetching data",
+  "profile": "Profile"
+}

@@ -1,0 +1,33 @@
+{
+  "common": {
+    "continue": "जारी रखें",
+    "cancel": "रद्द करें",
+    "search": "खोजें...",
+    "save": "सहेजें",
+    "ok": "ठीक है"
+  },
+  "auth": {
+    "chooseLanguage": "अपनी भाषा चुनें",
+    "welcome": "स्वागत है",
+    "enterMobile": "अपना मोबाइल नंबर दर्ज करें",
+    "sendOtp": "OTP भेजें",
+    "continueGuest": "अतिथि के रूप में जारी रखें"
+  },
+  "navigation": {
+    "home": "होम",
+    "search": "खोज",
+    "bookings": "बुकिंग",
+    "notifications": "अलर्ट",
+    "profile": "प्रोफ़ाइल"
+  },
+  "dashboard": {
+    "shops": "दुकानें",
+    "farmers": "किसान",
+    "services": "सेवाएं",
+    "rentals": "किराए पर",
+    "jobs": "नौकरियां",
+    "nearbyHelp": "आस-पास की मदद",
+    "offers": "ऑफ़र",
+    "subtitle": "आपके समुदाय को जोड़ना"
+  }
+}

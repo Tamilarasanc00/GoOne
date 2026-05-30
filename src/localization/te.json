@@ -1,0 +1,33 @@
+{
+  "common": {
+    "continue": "కొనసాగించండి",
+    "cancel": "రద్దు చేయండి",
+    "search": "శోధించండి...",
+    "save": "సేవ్ చేయండి",
+    "ok": "సరే"
+  },
+  "auth": {
+    "chooseLanguage": "మీ భాషను ఎంచుకోండి",
+    "welcome": "స్వాగతం",
+    "enterMobile": "మీ మొబైల్ నంబర్‌ను నమోదు చేయండి",
+    "sendOtp": "OTP పంపండి",
+    "continueGuest": "అతిథిగా కొనసాగించండి"
+  },
+  "navigation": {
+    "home": "హోమ్",
+    "search": "శోధన",
+    "bookings": "బుకింగ్‌లు",
+    "notifications": "నోటిఫికేషన్‌లు",
+    "profile": "ప్రొఫైల్"
+  },
+  "dashboard": {
+    "shops": "దుకాణాలు",
+    "farmers": "రైతులు",
+    "services": "సేవలు",
+    "rentals": "అద్దెలు",
+    "jobs": "ఉద్యోగాలు",
+    "nearbyHelp": "సమీప సహాయం",
+    "offers": "ఆఫర్‌లు",
+    "subtitle": "మీ సంఘాన్ని కలుపుతోంది"
+  }
+}

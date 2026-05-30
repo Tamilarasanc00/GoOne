@@ -1,0 +1,33 @@
+{
+  "common": {
+    "continue": "தொடரவும்",
+    "cancel": "ரத்துசெய்",
+    "search": "தேடுக...",
+    "save": "சேமி",
+    "ok": "சரி"
+  },
+  "auth": {
+    "chooseLanguage": "உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்",
+    "welcome": "வரவேற்கிறோம்",
+    "enterMobile": "உங்கள் மொபைல் எண்ணை உள்ளிடவும்",
+    "sendOtp": "OTP ஐ அனுப்பு",
+    "continueGuest": "விருந்தினராக தொடரவும்"
+  },
+  "navigation": {
+    "home": "முகப்பு",
+    "search": "தேடல்",
+    "bookings": "பதிவுகள்",
+    "notifications": "அறிவிப்புகள்",
+    "profile": "சுயவிவரம்"
+  },
+  "dashboard": {
+    "shops": "கடைகள்",
+    "farmers": "விவசாயிகள்",
+    "services": "சேவைகள்",
+    "rentals": "வாடகைகள்",
+    "jobs": "வேலைகள்",
+    "nearbyHelp": "அருகிலுள்ள உதவி",
+    "offers": "சலுகைகள்",
+    "subtitle": "உங்கள் சமூகத்தை இணைக்கிறது"
+  }
+}

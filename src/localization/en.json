@@ -1,0 +1,33 @@
+{
+  "common": {
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "search": "Search...",
+    "save": "Save",
+    "ok": "OK"
+  },
+  "auth": {
+    "chooseLanguage": "Choose Your Language",
+    "welcome": "Welcome",
+    "enterMobile": "Enter your mobile number",
+    "sendOtp": "Send OTP",
+    "continueGuest": "Continue as Guest"
+  },
+  "navigation": {
+    "home": "Home",
+    "search": "Search",
+    "bookings": "Bookings",
+    "notifications": "Alerts",
+    "profile": "Profile"
+  },
+  "dashboard": {
+    "shops": "Shops",
+    "farmers": "Farmers",
+    "services": "Services",
+    "rentals": "Rentals",
+    "jobs": "Jobs",
+    "nearbyHelp": "Nearby Help",
+    "offers": "Offers",
+    "subtitle": "Connecting your community"
+  }
+}
