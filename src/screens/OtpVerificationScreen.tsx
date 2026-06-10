@@ -1,15 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, TextInput as RNTextInput } from 'react-native';
-import { Text, Button, Surface, useTheme, HelperText } from 'react-native-paper';
+import { Text, Button, Surface, useTheme, HelperText, IconButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 
+import { apiService } from '../services/apiService';
+import { storage, StorageKeys } from '../services/storage';
+import { Alert } from 'react-native';
+import { showToast } from '../utils/toast';
+
 type OtpVerificationNavigationProp = NativeStackNavigationProp<RootStackParamList, 'OtpVerification'>;
 type OtpVerificationRouteProp = RouteProp<RootStackParamList, 'OtpVerification'>;
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 4;
 const RESEND_TIMEOUT = 30; // seconds
 
 const OtpVerificationScreen = () => {
@@ -17,8 +22,9 @@ const OtpVerificationScreen = () => {
   const navigation = useNavigation<OtpVerificationNavigationProp>();
   const route = useRoute<OtpVerificationRouteProp>();
   
-  // Get mobile number from params, fallback if not provided
+  // Get mobile number and mockOtp from params
   const mobileNumber = route.params?.mobileNumber || 'your number';
+  const mockOtp = route.params?.mockOtp;
 
   const [otp, setOtp] = useState<string[]>(new Array(OTP_LENGTH).fill(''));
   const [activeOTPIndex, setActiveOTPIndex] = useState<number>(0);
@@ -32,6 +38,13 @@ const OtpVerificationScreen = () => {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Autofill OTP if mockOtp is present in route params
+  useEffect(() => {
+    if (mockOtp) {
+      setOtp(mockOtp.split(''));
+    }
+  }, [mockOtp]);
 
   // Timer for Resend OTP
   useEffect(() => {
@@ -65,7 +78,6 @@ const OtpVerificationScreen = () => {
 
   const handleResend = () => {
     if (resendTimer === 0) {
-      // Logic to resend OTP
       setResendTimer(RESEND_TIMEOUT);
       setOtp(new Array(OTP_LENGTH).fill(''));
       setActiveOTPIndex(0);
@@ -73,35 +85,88 @@ const OtpVerificationScreen = () => {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const otpValue = otp.join('');
     if (otpValue.length < OTP_LENGTH) {
       setError('Please enter complete OTP');
+      showToast('Enter complete OTP');
       return;
     }
 
     setIsLoading(true);
     setError('');
+    showToast('Verifying OTP...');
 
-    // Mock verification
-    setTimeout(() => {
-      setIsLoading(false);
-      if (otpValue === '123456') {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'RoleSelection' }],
-        });
+    try {
+      // 1. Call verification API
+      const result = await apiService.auth.verifyOtp(mobileNumber, otpValue);
+      
+      if (result && result.token) {
+        showToast('Login successful!');
+        // 2. Persist Access Token
+        storage.set('APP_JWT_TOKEN', result.token);
+
+        // 3. Fetch profile completion status
+        const statusRes = await apiService.profile.checkStatus();
+        const { is_profile_completed, role } = statusRes;
+
+        if (role) {
+          storage.set(StorageKeys.USER_ROLE, role);
+        }
+
+        if (is_profile_completed) {
+          showToast('Welcome back!');
+          if (role === 'Retailer' || role === 'retail_shop') {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'RetailerDashboard' }],
+            });
+          } else {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'MainTabs' }],
+            });
+          }
+        } else {
+          showToast('Complete your profile details');
+          // If role chosen, navigate to CreateProfile, else let them select role
+          if (role) {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'CreateProfile' }],
+            });
+          } else {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'RoleSelection' }],
+            });
+          }
+        }
       } else {
-        setError('Invalid OTP. Please try again.');
-        // Clear OTP for retry
-        setOtp(new Array(OTP_LENGTH).fill(''));
-        setActiveOTPIndex(0);
+        setError('Invalid OTP code.');
+        showToast('Invalid OTP');
       }
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'OTP verification failed.');
+      showToast(err.message || 'OTP verification failed.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        />
+        <Text variant="titleLarge" style={styles.headerRowTitle}>Login</Text>
+      </View>
+
       <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -110,9 +175,16 @@ const OtpVerificationScreen = () => {
           <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
             Verify OTP
           </Text>
-          <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+          <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }, mockOtp ? { marginBottom: 16 } : null]}>
             Code has been sent to {mobileNumber}
           </Text>
+          {mockOtp && (
+            <Surface style={styles.testBadge} elevation={0}>
+              <Text style={styles.testBadgeText}>
+                🔑 Test OTP: <Text style={{ fontWeight: 'bold' }}>{mockOtp}</Text>
+              </Text>
+            </Surface>
+          )}
 
           <View style={styles.otpContainer}>
             {otp.map((digit, index) => (
@@ -184,6 +256,19 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  backButton: {
+    margin: 0,
+  },
+  headerRowTitle: {
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -206,6 +291,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+    maxWidth: 240,
+    alignSelf: 'center',
     marginBottom: 8,
   },
   otpInputContainer: {
@@ -241,6 +328,21 @@ const styles = StyleSheet.create({
   },
   resendButtonLabel: {
     fontWeight: 'bold',
+  },
+  testBadge: {
+    backgroundColor: '#FFF8E1',
+    borderColor: '#FFE082',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 20,
+    alignSelf: 'center',
+  },
+  testBadgeText: {
+    color: '#FF8F00',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

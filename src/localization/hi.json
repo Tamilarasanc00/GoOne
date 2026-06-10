@@ -4,7 +4,8 @@
     "cancel": "रद्द करें",
     "search": "खोजें...",
     "save": "सहेजें",
-    "ok": "ठीक है"
+    "ok": "ठीक है",
+    "changeLanguage": "भाषा बदलें"
   },
   "auth": {
     "chooseLanguage": "अपनी भाषा चुनें",
@@ -28,6 +29,7 @@
     "jobs": "नौकरियां",
     "nearbyHelp": "आस-पास की मदद",
     "offers": "ऑफ़र",
-    "subtitle": "आपके समुदाय को जोड़ना"
+    "subtitle": "आपके समुदाय को जोड़ना",
+    "exploreCategories": "श्रेणियां खोजें"
   }
 }

@@ -1,11 +1,14 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Image } from 'react-native';
-import { Text, Surface, IconButton, Button, useTheme, Divider, Avatar } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Image, Alert, Linking, RefreshControl } from 'react-native';
+import { Text, Surface, IconButton, Button, useTheme, Divider, Avatar, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
+import ReviewSection from '../components/ReviewSection';
+import { apiService } from '../services/apiService';
+import { showToast } from '../utils/toast';
 
 type WorkerDetailsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WorkerDetails'>;
 type WorkerDetailsRouteProp = RouteProp<RootStackParamList, 'WorkerDetails'>;
@@ -22,7 +25,87 @@ export default function WorkerDetailsScreen() {
   const route = useRoute<WorkerDetailsRouteProp>();
 
   const workerId = route.params?.workerId || '1';
-  const workerName = route.params?.workerName || 'Muthu Kumar';
+  const initialWorkerName = route.params?.workerName || 'Worker';
+
+  const [worker, setWorker] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [avgRating, setAvgRating] = React.useState<number>(4.8);
+  const [reviewsCount, setReviewsCount] = React.useState<number>(124);
+
+  const fetchWorkerDetails = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiService.workers.getDetails(parseInt(workerId, 10));
+      if (res.success && res.worker) {
+        setWorker(res.worker);
+        showToast('Worker details loaded');
+      } else {
+        setError('Worker not found');
+        showToast('Worker not found');
+      }
+    } catch (err: any) {
+      const errMsg = err.message || 'Failed to load worker details';
+      setError(errMsg);
+      showToast(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchWorkerDetails();
+  }, [workerId]);
+
+  const handleWhatsApp = () => {
+    const phone = worker?.phone || '+919876543210';
+    const name = worker?.name || initialWorkerName;
+    const formattedPhone = phone.replace(/[^0-9]/g, '');
+    const url = `whatsapp://send?phone=${formattedPhone}&text=Hello ${name}, I saw your profile on GoOne and want to book your services.`;
+    const fallbackUrl = `https://wa.me/${formattedPhone}?text=Hello ${name}, I saw your profile on GoOne.`;
+
+    showToast(`Opening WhatsApp for ${name}...`);
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(url);
+        } else {
+          return Linking.openURL(fallbackUrl);
+        }
+      })
+      .catch(() => {
+        showToast('Could not open WhatsApp');
+        Alert.alert('Error', 'Could not open WhatsApp. Please check if WhatsApp is installed.');
+      });
+  };
+
+  const handleBook = async () => {
+    if (!worker) return;
+    showToast(`Requesting booking with ${worker.name}...`);
+    try {
+      setLoading(true);
+      const res = await apiService.bookings.create({
+        target_id: worker.id,
+        target_type: 'Worker',
+        total_amount: worker.hourlyRate ? parseFloat(worker.hourlyRate) : 500
+      });
+      if (res.success) {
+        showToast('Booking requested successfully!');
+        Alert.alert(
+          'Booking Requested',
+          `Your service booking request for ${worker.name} has been submitted successfully.`
+        );
+      } else {
+        showToast('Failed to create booking');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Booking failed');
+      Alert.alert('Booking Failed', err.message || 'Something went wrong while requesting service.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
@@ -37,125 +120,155 @@ export default function WorkerDetailsScreen() {
         <Text variant="titleLarge" style={styles.headerTitle}>Worker Profile</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Profile Info */}
-        <View style={styles.profileSection}>
-          <Image 
-            source={{ uri: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80' }} 
-            style={styles.profileImageLarge} 
-          />
-          <Text variant="headlineSmall" style={styles.workerNameLarge}>{workerName}</Text>
-          <Text variant="titleMedium" style={{ color: theme.colors.primary, marginBottom: 8 }}>Electrician</Text>
-          
-          <View style={styles.badgesRow}>
-            <View style={styles.badge}>
-              <MaterialCommunityIcons name="star" size={16} color="#FFC107" />
-              <Text style={styles.badgeText}>4.8 (124)</Text>
-            </View>
-            <View style={styles.badge}>
-              <MaterialCommunityIcons name="briefcase-outline" size={16} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>8 Yrs Exp</Text>
-            </View>
-            <View style={styles.badge}>
-              <MaterialCommunityIcons name="map-marker-outline" size={16} color={theme.colors.onSurfaceVariant} />
-              <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>2.5 km</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Voice Introduction (Mock) */}
-        <Surface style={styles.voiceSection} elevation={1}>
-          <View style={styles.voiceHeader}>
-            <MaterialCommunityIcons name="waveform" size={24} color={theme.colors.primary} />
-            <Text variant="titleMedium" style={styles.voiceTitle}>Voice Introduction</Text>
-          </View>
-          <View style={styles.audioPlayer}>
-            <IconButton 
-              icon="play-circle" 
-              size={40} 
-              iconColor={theme.colors.primary} 
-              onPress={() => {}} 
-              style={{ margin: 0 }}
-            />
-            <View style={styles.waveBarContainer}>
-              <View style={styles.waveBar} />
-              <View style={[styles.waveBar, { height: 16 }]} />
-              <View style={[styles.waveBar, { height: 24 }]} />
-              <View style={[styles.waveBar, { height: 12 }]} />
-              <View style={[styles.waveBar, { height: 20 }]} />
-              <View style={[styles.waveBar, { height: 16 }]} />
-              <View style={[styles.waveBar, { height: 8 }]} />
-            </View>
-            <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>0:15</Text>
-          </View>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
-            "Hello, I am Muthu. I have 8 years of experience in all kinds of electrical works, wiring, and repairs..."
+      {loading && !worker ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={{ marginTop: 12, color: theme.colors.onSurfaceVariant }}>
+            Loading worker profile...
           </Text>
-        </Surface>
-
-        {/* Availability */}
-        <View style={styles.availabilitySection}>
-          <Text variant="titleLarge" style={styles.sectionHeader}>Availability</Text>
-          <View style={styles.availabilityCard}>
-            <MaterialCommunityIcons name="check-circle" size={24} color="#4CAF50" />
-            <View style={{ marginLeft: 12 }}>
-              <Text variant="titleMedium" style={{ color: '#4CAF50', fontWeight: 'bold' }}>Available Now</Text>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Can reach your location in 30 mins</Text>
-            </View>
-          </View>
         </View>
-
-        {/* Reviews */}
-        <View style={styles.reviewsSection}>
-          <Text variant="titleLarge" style={styles.sectionHeader}>Recent Reviews</Text>
-          {MOCK_REVIEWS.map(review => (
-            <View key={review.id} style={styles.reviewItem}>
-              <View style={styles.reviewHeader}>
-                <Avatar.Text size={32} label={review.user.substring(0, 2).toUpperCase()} />
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text variant="titleSmall">{review.user}</Text>
-                  <View style={styles.starsRow}>
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <MaterialCommunityIcons 
-                        key={star} 
-                        name="star" 
-                        size={14} 
-                        color={star <= review.rating ? "#FFC107" : "#E0E0E0"} 
-                      />
-                    ))}
-                  </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.error} />
+          <Text variant="bodyLarge" style={{ marginTop: 12, color: theme.colors.error, textAlign: 'center' }}>
+            {error}
+          </Text>
+          <Button mode="contained" onPress={fetchWorkerDetails} style={{ marginTop: 16 }}>
+            Retry
+          </Button>
+        </View>
+      ) : (
+        <>
+          <ScrollView 
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchWorkerDetails} colors={[theme.colors.primary]} />}
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Profile Info */}
+            <View style={styles.profileSection}>
+              <Image 
+                source={{ uri: worker?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80' }} 
+                style={styles.profileImageLarge} 
+              />
+              <Text variant="headlineSmall" style={styles.workerNameLarge}>{worker?.name}</Text>
+              <Text variant="titleMedium" style={{ color: theme.colors.primary, marginBottom: 8 }}>{worker?.category || 'Service Worker'}</Text>
+              
+              <View style={styles.badgesRow}>
+                <View style={styles.badge}>
+                  <MaterialCommunityIcons name="star" size={16} color="#FFC107" />
+                  <Text style={styles.badgeText}>{avgRating} ({reviewsCount})</Text>
                 </View>
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>{review.date}</Text>
+                <View style={styles.badge}>
+                  <MaterialCommunityIcons name="briefcase-outline" size={16} color={theme.colors.onSurfaceVariant} />
+                  <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
+                    {worker?.experienceYears || 2} Yrs Exp
+                  </Text>
+                </View>
+                <View style={styles.badge}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={16} color={theme.colors.onSurfaceVariant} />
+                  <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
+                    {worker?.location || 'Sankarapuram'}
+                  </Text>
+                </View>
               </View>
-              <Text variant="bodyMedium" style={styles.reviewText}>"{review.comment}"</Text>
-              <Divider style={{ marginTop: 16 }} />
             </View>
-          ))}
-        </View>
-      </ScrollView>
 
-      {/* Bottom Action Bar */}
-      <Surface style={styles.bottomBar} elevation={4}>
-        <Button 
-          mode="outlined" 
-          icon="whatsapp" 
-          onPress={() => {}}
-          style={styles.bottomButton}
-          contentStyle={styles.bottomButtonContent}
-          textColor="#25D366"
-        >
-          WhatsApp
-        </Button>
-        <Button 
-          mode="contained" 
-          icon="calendar-check" 
-          onPress={() => {}}
-          style={[styles.bottomButton, { marginLeft: 12 }]}
-          contentStyle={styles.bottomButtonContent}
-        >
-          Book Service
-        </Button>
-      </Surface>
+            {/* Voice Introduction (Mock) */}
+            <Surface style={styles.voiceSection} elevation={1}>
+              <View style={styles.voiceHeader}>
+                <MaterialCommunityIcons name="waveform" size={24} color={theme.colors.primary} />
+                <Text variant="titleMedium" style={styles.voiceTitle}>Voice Introduction</Text>
+              </View>
+              <View style={styles.audioPlayer}>
+                <IconButton 
+                  icon="play-circle" 
+                  size={40} 
+                  iconColor={theme.colors.primary} 
+                  onPress={() => {}} 
+                  style={{ margin: 0 }}
+                />
+                <View style={styles.waveBarContainer}>
+                  <View style={styles.waveBar} />
+                  <View style={[styles.waveBar, { height: 16 }]} />
+                  <View style={[styles.waveBar, { height: 24 }]} />
+                  <View style={[styles.waveBar, { height: 12 }]} />
+                  <View style={[styles.waveBar, { height: 20 }]} />
+                  <View style={[styles.waveBar, { height: 16 }]} />
+                  <View style={[styles.waveBar, { height: 8 }]} />
+                </View>
+                <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>0:15</Text>
+              </View>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
+                "Hello, I am {worker?.name}. I have {worker?.experienceYears || 2} years of experience in all kinds of {worker?.category?.toLowerCase() || 'service'} works, wiring, and repairs..."
+              </Text>
+            </Surface>
+
+            {/* Availability */}
+            <View style={styles.availabilitySection}>
+              <Text variant="titleLarge" style={styles.sectionHeader}>Availability</Text>
+              <View 
+                style={[
+                  styles.availabilityCard, 
+                  { backgroundColor: worker?.isAvailable ? '#E8F5E9' : '#FFE0B2' }
+                ]}
+              >
+                <MaterialCommunityIcons 
+                  name={worker?.isAvailable ? "check-circle" : "clock"} 
+                  size={24} 
+                  color={worker?.isAvailable ? "#4CAF50" : "#FF9800"} 
+                />
+                <View style={{ marginLeft: 12 }}>
+                  <Text 
+                    variant="titleMedium" 
+                    style={{ 
+                      color: worker?.isAvailable ? '#4CAF50' : '#FF9800', 
+                      fontWeight: 'bold' 
+                    }}
+                  >
+                    {worker?.isAvailable ? 'Available Now' : 'Offline / Busy'}
+                  </Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {worker?.isAvailable ? 'Can reach your location in 30 mins' : 'Currently not taking new jobs'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Reviews */}
+            <ReviewSection 
+              targetType="Worker" 
+              targetId={parseInt(workerId, 10) || 1} 
+              onRatingFetched={(avg, count) => {
+                setAvgRating(avg);
+                setReviewsCount(count);
+              }}
+            />
+          </ScrollView>
+
+          {/* Bottom Action Bar */}
+          <Surface style={styles.bottomBar} elevation={4}>
+            <Button 
+              mode="outlined" 
+              icon="whatsapp" 
+              onPress={handleWhatsApp}
+              style={styles.bottomButton}
+              contentStyle={styles.bottomButtonContent}
+              textColor="#25D366"
+            >
+              WhatsApp
+            </Button>
+            <Button 
+              mode="contained" 
+              icon="calendar-check" 
+              onPress={handleBook}
+              style={[styles.bottomButton, { marginLeft: 12 }]}
+              contentStyle={styles.bottomButtonContent}
+            >
+              Book Service
+            </Button>
+          </Surface>
+        </>
+      )}
     </SafeAreaView>
   );
 }
@@ -301,5 +414,17 @@ const styles = StyleSheet.create({
   },
   bottomButtonContent: {
     height: 48,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
   },
 });

@@ -4,7 +4,8 @@
     "cancel": "Cancel",
     "search": "Search...",
     "save": "Save",
-    "ok": "OK"
+    "ok": "OK",
+    "changeLanguage": "Change Language"
   },
   "auth": {
     "chooseLanguage": "Choose Your Language",
@@ -28,6 +29,7 @@
     "jobs": "Jobs",
     "nearbyHelp": "Nearby Help",
     "offers": "Offers",
-    "subtitle": "Connecting your community"
+    "subtitle": "Connecting your community",
+    "exploreCategories": "Explore Categories"
   }
 }

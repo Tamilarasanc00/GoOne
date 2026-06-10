@@ -1,111 +1,136 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView } from 'react-native';
-import { Text, Searchbar, Surface, Chip, useTheme, IconButton } from 'react-native-paper';
+import { Text, Searchbar, Surface, Chip, useTheme, IconButton, ActivityIndicator, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
+import { apiService } from '../services/apiService';
+import { showToast } from '../utils/toast';
+import { StorageKeys, saveJSON, loadJSON } from '../services/storage';
 
 type RetailShopListingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RetailShopListing'>;
 
 const CATEGORIES = ['All', 'Groceries', 'Hardware', 'Clothing', 'Electronics', 'Pharmacy'];
 
-const MOCK_SHOPS = [
-  {
-    id: '1',
-    name: 'Sri Murugan Stores',
-    image: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    rating: 4.5,
-    distance: '1.2 km',
-    isOpen: true,
-    category: 'Groceries',
-    location: 'Sankarapuram',
-  },
-  {
-    id: '2',
-    name: 'Balaji Hardware',
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    rating: 4.2,
-    distance: '3.5 km',
-    isOpen: true,
-    category: 'Hardware',
-    location: 'Sankarapuram Market',
-  },
-  {
-    id: '3',
-    name: 'Kannan Medicals',
-    image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    rating: 4.8,
-    distance: '0.8 km',
-    isOpen: false,
-    category: 'Pharmacy',
-  },
-  {
-    id: '4',
-    name: 'Chennai Mobiles',
-    image: 'https://images.unsplash.com/photo-1519326844852-704caea5679e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    rating: 4.0,
-    distance: '3.1 km',
-    isOpen: true,
-    category: 'Electronics',
-  },
-];
-
 export default function RetailShopListingScreen() {
   const theme = useTheme();
   const navigation = useNavigation<RetailShopListingNavigationProp>();
 
+  const [shops, setShops] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
+  const fetchShops = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+    try {
+      const res = await apiService.shops.getNearby(11.9686, 78.9669);
+      if (res.success && res.shops) {
+        setShops(res.shops);
+        saveJSON(StorageKeys.CACHED_LISTINGS + '_shops', res.shops);
+        showToast(isRefresh ? 'Shops list refreshed' : 'Shops list loaded');
+      }
+    } catch (err: any) {
+      const cached = loadJSON<any[]>(StorageKeys.CACHED_LISTINGS + '_shops');
+      if (cached && cached.length > 0) {
+        setShops(cached);
+        showToast('Offline: Loaded cached shops');
+      } else {
+        const errMsg = err.message || 'Failed to fetch shops';
+        setError(errMsg);
+        showToast(errMsg);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShops();
+  }, []);
+
+  const handleCategoryPress = React.useCallback((category: string) => {
+    setActiveCategory(category);
+    showToast(`Filtering by ${category}`);
+  }, []);
+
   // Filter logic
-  const filteredShops = MOCK_SHOPS.filter(shop => {
-    const matchesSearch = shop.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || shop.category === activeCategory;
-    return matchesSearch && matchesCategory;
+  const filteredShops = React.useMemo(() => {
+    return shops.filter(shop => {
+      const matchesSearch = shop.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = activeCategory === 'All' || 
+                              (shop.category && shop.category.toLowerCase() === activeCategory.toLowerCase()) || 
+                              (shop.description && shop.description.toLowerCase().includes(activeCategory.toLowerCase()));
+      return matchesSearch && matchesCategory;
+    });
+  }, [shops, searchQuery, activeCategory]);
+
+  const ShopCard = React.memo(({ item, onPress }: { item: any, onPress: () => void }) => {
+    const isOpen = item.status === true || item.status === 'true';
+    const imageUri = item.image_url || 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=800&q=80';
+
+    return (
+      <TouchableOpacity activeOpacity={0.8} onPress={onPress}>
+        <Surface style={[styles.shopCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+          <Image source={{ uri: imageUri }} style={styles.shopImage} />
+          <View style={styles.shopInfo}>
+            <View style={styles.shopHeader}>
+              <Text variant="titleMedium" style={styles.shopName} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <View style={[styles.statusBadge, { backgroundColor: isOpen ? '#E8F5E9' : '#FFEBEE' }]}>
+                <Text style={[styles.statusText, { color: isOpen ? '#4CAF50' : '#F44336' }]}>
+                  {isOpen ? 'OPEN' : 'CLOSED'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.shopDetails}>
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="star" size={16} color="#FFC107" />
+                <Text variant="bodyMedium" style={styles.detailText}>{item.rating || 4.5}</Text>
+              </View>
+              <View style={styles.detailDivider} />
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="map-marker-distance" size={16} color={theme.colors.onSurfaceVariant} />
+                <Text variant="bodyMedium" style={[styles.detailText, { color: theme.colors.onSurfaceVariant }]}>
+                  {item.distance || '1.2 km'}
+                </Text>
+              </View>
+              <View style={styles.detailDivider} />
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                {item.description || 'Retail Shop'}
+              </Text>
+            </View>
+          </View>
+        </Surface>
+      </TouchableOpacity>
+    );
   });
 
-  const renderShopCard = ({ item }: { item: typeof MOCK_SHOPS[0] }) => (
-    <TouchableOpacity 
-      activeOpacity={0.8} 
-      onPress={() => navigation.navigate('ShopDetails', { shopId: item.id, shopName: item.name })}
-    >
-      <Surface style={[styles.shopCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
-      <Image source={{ uri: item.image }} style={styles.shopImage} />
-      <View style={styles.shopInfo}>
-        <View style={styles.shopHeader}>
-          <Text variant="titleMedium" style={styles.shopName} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <View style={[styles.statusBadge, { backgroundColor: item.isOpen ? '#E8F5E9' : '#FFEBEE' }]}>
-            <Text style={[styles.statusText, { color: item.isOpen ? '#4CAF50' : '#F44336' }]}>
-              {item.isOpen ? 'OPEN' : 'CLOSED'}
-            </Text>
-          </View>
-        </View>
+  const renderShopCard = React.useCallback(({ item }: { item: any }) => {
+    return (
+      <ShopCard 
+        item={item} 
+        onPress={() => navigation.navigate('ShopDetails', { shopId: String(item.id), shopName: item.name })}
+      />
+    );
+  }, [navigation, theme]);
 
-        <View style={styles.shopDetails}>
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="star" size={16} color="#FFC107" />
-            <Text variant="bodyMedium" style={styles.detailText}>{item.rating}</Text>
-          </View>
-          <View style={styles.detailDivider} />
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="map-marker-distance" size={16} color={theme.colors.onSurfaceVariant} />
-            <Text variant="bodyMedium" style={[styles.detailText, { color: theme.colors.onSurfaceVariant }]}>
-              {item.distance}
-            </Text>
-          </View>
-          <View style={styles.detailDivider} />
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            {item.category}
-          </Text>
-        </View>
-      </View>
-    </Surface>
-    </TouchableOpacity>
-  );
+  const getItemLayout = React.useCallback((data: any, index: number) => (
+    {length: 250, offset: 250 * index, index}
+  ), []);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
@@ -138,7 +163,7 @@ export default function RetailShopListingScreen() {
             <Chip
               key={category}
               selected={activeCategory === category}
-              onPress={() => setActiveCategory(category)}
+              onPress={() => handleCategoryPress(category)}
               style={[
                 styles.categoryChip,
                 activeCategory === category ? { backgroundColor: theme.colors.primary } : undefined
@@ -151,22 +176,48 @@ export default function RetailShopListingScreen() {
         </ScrollView>
       </View>
 
-      {/* Shop List */}
-      <FlatList
-        data={filteredShops}
-        keyExtractor={(item) => item.id}
-        renderItem={renderShopCard}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="store-search-outline" size={64} color={theme.colors.onSurfaceVariant} />
-            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
-              No shops found
-            </Text>
-          </View>
-        }
-      />
+      {/* Loader / Error Banner / Shop List */}
+      {loading && !refreshing ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={{ marginTop: 12, color: theme.colors.onSurfaceVariant }}>
+            Loading nearby shops...
+          </Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.error} />
+          <Text variant="bodyLarge" style={{ marginTop: 12, color: theme.colors.error, textAlign: 'center' }}>
+            {error}
+          </Text>
+          <Button mode="contained" onPress={() => fetchShops()} style={{ marginTop: 16 }}>
+            Retry
+          </Button>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredShops}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderShopCard}
+          getItemLayout={getItemLayout}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={() => fetchShops(true)}
+          removeClippedSubviews={true}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="store-search-outline" size={64} color={theme.colors.onSurfaceVariant} />
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
+                No shops found
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -260,6 +311,18 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#BDBDBD',
     marginHorizontal: 8,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
   },
   emptyContainer: {
     alignItems: 'center',

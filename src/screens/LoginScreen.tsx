@@ -5,6 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
+import { apiService } from '../services/apiService';
+import { Alert } from 'react-native';
+import { showToast } from '../utils/toast';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
 
@@ -13,9 +16,28 @@ const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const [mobileNumber, setMobileNumber] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
+  const [loading, setLoading] = useState(false);
 
-  const handleSendOTP = () => {
-    navigation.navigate('OtpVerification', { mobileNumber: countryCode + ' ' + mobileNumber });
+  const handleSendOTP = async () => {
+    if (mobileNumber.length < 10) {
+      showToast('Enter valid 10-digit number');
+      return;
+    }
+    setLoading(true);
+    showToast('Sending OTP...');
+    try {
+      const fullMobile = countryCode + mobileNumber;
+      const res = await apiService.auth.sendOtp(fullMobile);
+      showToast(res.message || 'OTP Sent!');
+      navigation.navigate('OtpVerification', { 
+        mobileNumber: fullMobile, 
+        mockOtp: res.mock_otp 
+      });
+    } catch (err: any) {
+      showToast(err.message || 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGuest = () => {
@@ -24,16 +46,16 @@ const LoginScreen = () => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardView} 
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.container} bounces={false}>
-          
+
           {/* Header Illustration / Logo */}
           <View style={styles.illustrationContainer}>
-            <Image 
-              source={require('../assets/images/logo.png.jpeg')} 
+            <Image
+              source={require('../assets/images/logo.png.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -68,12 +90,13 @@ const LoginScreen = () => {
               />
             </View>
 
-            <Button 
-              mode="contained" 
-              onPress={handleSendOTP} 
+            <Button
+              mode="contained"
+              onPress={handleSendOTP}
               style={styles.sendButton}
               contentStyle={styles.buttonContent}
-              disabled={mobileNumber.length < 10}
+              loading={loading}
+              disabled={loading || mobileNumber.length < 10}
             >
               Send OTP
             </Button>
@@ -84,16 +107,16 @@ const LoginScreen = () => {
               <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
             </View>
 
-            <Button 
-              mode="outlined" 
-              onPress={handleGuest} 
+            <Button
+              mode="outlined"
+              onPress={handleGuest}
               style={styles.guestButton}
               contentStyle={styles.buttonContent}
             >
               Continue as Guest
             </Button>
           </Surface>
-          
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -6,12 +6,22 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { storage } from '../services/storage';
+import { showToast } from '../utils/toast';
+import { useAppSelector, useAppDispatch } from '../redux/hooks';
+import { resetProfile } from '../redux/slices/profileSlice';
+import { setRole } from '../redux/slices/appSlice';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProfileScreen() {
   const theme = useTheme();
   const navigation = useNavigation<ProfileNavigationProp>();
+  const dispatch = useAppDispatch();
+
+  // Fetch active user details from Redux
+  const user = useAppSelector((state) => state.profile.user);
+  const role = useAppSelector((state) => state.profile.role);
 
   const handleLogout = () => {
     Alert.alert(
@@ -22,10 +32,21 @@ export default function ProfileScreen() {
         {
           text: "Logout",
           style: "destructive",
-          onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })
+          onPress: () => {
+            storage.remove('APP_JWT_TOKEN');
+            dispatch(resetProfile());
+            dispatch(setRole(null));
+            showToast('Logged out successfully');
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          }
         }
       ]
     );
+  };
+
+  const handleEditProfile = () => {
+    showToast('Loading profile editor...');
+    navigation.navigate('CreateProfile', { isEdit: true });
   };
 
   const renderMenuItem = (icon: string, title: string, subtitle?: string, onPress?: () => void, color?: string) => (
@@ -58,16 +79,18 @@ export default function ProfileScreen() {
           <View style={styles.profileInfo}>
             <Avatar.Image
               size={80}
-              source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' }}
+              source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' }}
               style={styles.avatar}
             />
             <View style={styles.nameContainer}>
-              <Text variant="headlineSmall" style={styles.userName}>Tamizh</Text>
-              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>+91 98765 43210</Text>
+              <Text variant="headlineSmall" style={styles.userName}>{user?.name || 'Tamizh User'}</Text>
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>{user?.phone_number || '+91 98765 43210'}</Text>
 
               <View style={styles.roleBadge}>
-                <MaterialCommunityIcons name="shield-check" size={16} color="#4CAF50" />
-                <Text style={styles.roleText}>Verified User</Text>
+                <MaterialCommunityIcons name="account-circle-outline" size={16} color="#0066FF" />
+                <Text style={styles.roleText}>
+                  {role ? role.replace('_', ' ').toUpperCase() : 'CUSTOMER'}
+                </Text>
               </View>
             </View>
 
@@ -75,7 +98,7 @@ export default function ProfileScreen() {
               icon="pencil"
               mode="contained-tonal"
               size={20}
-              onPress={() => { }}
+              onPress={handleEditProfile}
               style={styles.editButton}
             />
           </View>
@@ -85,25 +108,59 @@ export default function ProfileScreen() {
         <View style={styles.menuSection}>
           <Text variant="titleSmall" style={styles.sectionTitle}>ACCOUNT</Text>
           <Surface style={styles.menuGroup} elevation={1}>
-            {renderMenuItem('account-edit-outline', 'Edit Profile', 'Update personal details')}
+            {renderMenuItem('account-edit-outline', 'Edit Profile', 'Update personal details', handleEditProfile)}
             <Divider style={styles.divider} />
-            {renderMenuItem('translate', 'Language', 'Tamil (தமிழ்)', () => navigation.navigate('LanguageSelection'))}
+            {renderMenuItem('translate', 'Language', 'Tamil (தமிழ்)', () => {
+              showToast('Opening language selector...');
+              navigation.navigate('LanguageSelection');
+            })}
           </Surface>
 
           <Text variant="titleSmall" style={styles.sectionTitle}>MY ACTIVITY</Text>
           <Surface style={styles.menuGroup} elevation={1}>
-            {renderMenuItem('storefront-outline', 'My Listings', 'Manage your shops and items')}
+            {renderMenuItem('storefront-outline', 'My Listings', 'Manage your shops and items', () => {
+              if (role === 'Retailer') {
+                showToast('Loading retailer dashboard...');
+                navigation.navigate('RetailerDashboard');
+              } else if (role === 'Farmer') {
+                showToast('Loading farmer dashboard...');
+                navigation.navigate('FarmerDashboard');
+              } else if (role === 'Service Worker') {
+                showToast('Loading worker dashboard...');
+                navigation.navigate('WorkerDashboard');
+              } else if (role === 'Rental Owner') {
+                showToast('Loading rental dashboard...');
+                navigation.navigate('RentalDashboard');
+              } else {
+                showToast('My Listings is only available for Retailers, Farmers, Workers & Rental Owners');
+              }
+            })}
             <Divider style={styles.divider} />
-            {renderMenuItem('calendar-check-outline', 'My Bookings', 'View active and past jobs')}
+            {renderMenuItem('briefcase-outline', 'My Job Postings', 'Hire workers & manage job posts', () => {
+              showToast('Loading job postings...');
+              navigation.navigate('EmployerDashboard');
+            })}
             <Divider style={styles.divider} />
-            {renderMenuItem('heart-outline', 'Saved', 'Favorite shops and workers')}
+            {renderMenuItem('calendar-check-outline', 'My Bookings', 'View active and past bookings', () => {
+              showToast('Loading booking logs...');
+              navigation.navigate('MainTabs'); // Redirects to tab navigator (contains bookings)
+            })}
+            <Divider style={styles.divider} />
+            {renderMenuItem('heart-outline', 'Saved', 'Favorite shops and workers', () => {
+              showToast('Loading saved favorites...');
+            })}
           </Surface>
 
           <Text variant="titleSmall" style={styles.sectionTitle}>APP PREFERENCES</Text>
           <Surface style={styles.menuGroup} elevation={1}>
-            {renderMenuItem('cog-outline', 'Settings', 'Notifications, Privacy', () => navigation.navigate('Settings'))}
+            {renderMenuItem('cog-outline', 'Settings', 'Notifications, Privacy', () => {
+              showToast('Opening settings...');
+              navigation.navigate('Settings');
+            })}
             <Divider style={styles.divider} />
-            {renderMenuItem('help-circle-outline', 'Help & Support', 'FAQs and Customer Care')}
+            {renderMenuItem('help-circle-outline', 'Help & Support', 'FAQs and Customer Care', () => {
+              showToast('Contacting customer care...');
+            })}
           </Surface>
 
           {/* Logout Button */}
@@ -153,7 +210,7 @@ const styles = StyleSheet.create({
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#F0F4FF',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -161,7 +218,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   roleText: {
-    color: '#4CAF50',
+    color: '#0066FF',
     fontWeight: 'bold',
     fontSize: 12,
     marginLeft: 4,

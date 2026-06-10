@@ -12,12 +12,22 @@ import RentalMarketplaceScreen from '../screens/RentalMarketplaceScreen';
 import DailyWageJobListingScreen from '../screens/DailyWageJobListingScreen';
 import NearbyHelpScreen from '../screens/NearbyHelpScreen';
 import RetailerDashboardScreen from '../screens/RetailerDashboardScreen';
+import FarmerDashboardScreen from '../screens/FarmerDashboardScreen';
+import WorkerDashboardScreen from '../screens/WorkerDashboardScreen';
+import RentalDashboardScreen from '../screens/RentalDashboardScreen';
 import AddProductScreen from '../screens/AddProductScreen';
+import AddCropScreen from '../screens/AddCropScreen';
+import AddRentalScreen from '../screens/AddRentalScreen';
+import AddOfferScreen from '../screens/AddOfferScreen';
 import WorkerDetailsScreen from '../screens/WorkerDetailsScreen';
 import ShopDetailsScreen from '../screens/ShopDetailsScreen';
 import MainTabNavigator from './MainTabNavigator';
 import SettingsScreen from '../screens/SettingsScreen';
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
+import CreateProfileScreen from '../screens/CreateProfileScreen';
+import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
+import AddJobScreen from '../screens/AddJobScreen';
 import { storage, StorageKeys } from '../services/storage';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -45,11 +55,21 @@ export default function RootNavigator() {
       <Stack.Screen name="DailyWageJobListing" component={DailyWageJobListingScreen} />
       <Stack.Screen name="NearbyHelp" component={NearbyHelpScreen} />
       <Stack.Screen name="RetailerDashboard" component={RetailerDashboardScreen} />
+      <Stack.Screen name="FarmerDashboard" component={FarmerDashboardScreen} />
+      <Stack.Screen name="WorkerDashboard" component={WorkerDashboardScreen} />
+      <Stack.Screen name="RentalDashboard" component={RentalDashboardScreen} />
       <Stack.Screen name="AddProduct" component={AddProductScreen} />
+      <Stack.Screen name="AddCrop" component={AddCropScreen} />
+      <Stack.Screen name="AddRental" component={AddRentalScreen} />
+      <Stack.Screen name="AddOffer" component={AddOfferScreen} />
       <Stack.Screen name="WorkerDetails" component={WorkerDetailsScreen} />
       <Stack.Screen name="ShopDetails" component={ShopDetailsScreen} />
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+      <Stack.Screen name="CreateProfile" component={CreateProfileScreen} />
+      <Stack.Screen name="EmployerDashboard" component={EmployerDashboardScreen} />
+      <Stack.Screen name="AddJob" component={AddJobScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Text, Surface, RadioButton, Button, useTheme, Avatar } from 'react-native-paper';
+import { Text, Surface, RadioButton, Button, useTheme, Avatar, IconButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { storage, StorageKeys } from '../services/storage';
+import { showToast } from '../utils/toast';
 
 type LanguageSelectionNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LanguageSelection'>;
 
@@ -42,7 +43,12 @@ const LanguageSelectionScreen = () => {
 
   const handleContinue = () => {
     storage.set(StorageKeys.LANGUAGE, selectedLanguage);
-    navigation.replace('Login');
+    showToast(`Language saved: ${selectedLanguage.toUpperCase()}`);
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace('Login');
+    }
   };
 
   const renderItem = ({ item }: { item: typeof LANGUAGES[0] }) => {
@@ -92,14 +98,25 @@ const LanguageSelectionScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
+      {navigation.canGoBack() && (
+        <View style={styles.headerRow}>
+          <IconButton
+            icon="arrow-left"
+            size={24}
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          />
+          <Text variant="titleLarge" style={styles.headerRowTitle}>Language</Text>
+        </View>
+      )}
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={[styles.logoContainer, { backgroundColor: PRIMARY_COLOR }]}>
             <MaterialCommunityIcons name="translate" size={48} color="#FFFFFF" />
           </View>
           <Text variant="headlineMedium" style={styles.title}>
-            {t('chooseLanguage', 'Choose Your Language')}
+            {t('auth.chooseLanguage', 'Choose Your Language')}
           </Text>
         </View>
 
@@ -119,7 +136,7 @@ const LanguageSelectionScreen = () => {
             contentStyle={styles.buttonContent}
             labelStyle={styles.buttonLabel}
           >
-            {t('continue', 'Continue')}
+            {t('common.continue', 'Continue')}
           </Button>
         </View>
       </View>
@@ -130,6 +147,19 @@ const LanguageSelectionScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  backButton: {
+    margin: 0,
+  },
+  headerRowTitle: {
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   container: {
     flex: 1,

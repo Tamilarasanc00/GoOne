@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, ActivityIndicator } from 'react-native';
 import { Text, TextInput, Button, useTheme, Surface, IconButton, HelperText } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useForm, Controller } from 'react-hook-form';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { apiService } from '../services/apiService';
+import { useAppSelector } from '../redux/hooks';
+import { showToast } from '../utils/toast';
+import { syncService } from '../services/syncService';
 
 type FormData = {
   productName: string;
@@ -14,12 +18,41 @@ type FormData = {
   description: string;
 };
 
+// Keyword options configuration for ease of input
+const KEYWORD_PRESETS: { [category: string]: string[] } = {
+  'Groceries': ['Rice (25kg)', 'Sunflower Oil (5L)', 'Wheat Flour (10kg)', 'Sugar (1kg)', 'Toor Dal (1kg)'],
+  'Vegetables': ['Tomatoes (1kg)', 'Onions (1kg)', 'Potatoes (1kg)', 'Green Chillies (100g)', 'Brinjal (1kg)'],
+  'Fruits': ['Banana (12 pcs)', 'Apples (1kg)', 'Mangoes (1kg)', 'Papaya (1 pc)', 'Watermelon (1 pc)'],
+  'Fertilizers': ['Urea (50kg)', 'DAP (50kg)', 'Organic Compost (25kg)', 'Potash (50kg)', 'Neem Cake (10kg)'],
+  'Dairy & Eggs': ['Milk (1L)', 'Fresh Eggs (30 pcs)', 'Butter (500g)', 'Ghee (1L)', 'Curd (500g)']
+};
+
+const CATEGORY_LIST = Object.keys(KEYWORD_PRESETS);
+
 export default function AddProductScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
+  const route = useRoute<any>();
   const [imageUri, setImageUri] = useState<string | null>(null);
+  
+  // Edit mode states
+  const productId = route.params?.productId;
+  const isEdit = !!productId;
+  
+  const [fetchingProduct, setFetchingProduct] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const { control, handleSubmit, formState: { errors }, setValue } = useForm<FormData>({
+  // Upload simulation states
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+
+  // Selected preset category for keyword chip mapping
+  const [selectedPresetCat, setSelectedPresetCat] = useState<string | null>(null);
+
+  const shopProfile = useAppSelector((state) => state.profile.profile);
+
+  const { control, handleSubmit, formState: { errors }, setValue, watch } = useForm<FormData>({
     defaultValues: {
       productName: '',
       category: '',
@@ -29,47 +62,153 @@ export default function AddProductScreen() {
     }
   });
 
-  const onSubmit = (data: FormData) => {
+  // Load product details in edit mode
+  useEffect(() => {
+    if (isEdit) {
+      const loadProduct = async () => {
+        setFetchingProduct(true);
+        showToast('Loading product details...');
+        try {
+          const res = await apiService.products.getDetails(parseInt(productId, 10));
+          if (res && res.success && res.product) {
+            const prod = res.product;
+            setValue('productName', prod.name);
+            setValue('category', prod.category);
+            setValue('price', String(parseFloat(prod.price).toFixed(0)));
+            setValue('quantity', String(prod.stock_quantity || '10'));
+            setValue('description', prod.description || '');
+            setImageUri(prod.image_url);
+            
+            // Auto match preset category list
+            if (CATEGORY_LIST.includes(prod.category)) {
+              setSelectedPresetCat(prod.category);
+            }
+            showToast('Product loaded');
+          } else {
+            showToast('Product details not found');
+          }
+        } catch (err: any) {
+          showToast(err.message || 'Failed to fetch product');
+        } finally {
+          setFetchingProduct(false);
+        }
+      };
+      loadProduct();
+    }
+  }, [productId, isEdit]);
+
+  const onSubmit = async (data: FormData) => {
     if (!imageUri) {
+      showToast('Product image is required');
       Alert.alert('Missing Image', 'Please upload a product image.');
       return;
     }
-    console.log(data);
-    Alert.alert('Success', 'Product added successfully!', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+
+    setSubmitting(true);
+    showToast(isEdit ? 'Saving changes...' : 'Adding product...');
+
+    const payload = {
+      shop_id: shopProfile?.id,
+      name: data.productName,
+      category: data.category,
+      price: data.price,
+      stock_quantity: parseInt(data.quantity, 10) || 10,
+      image_url: imageUri
+    };
+
+    try {
+      let res;
+      if (isEdit) {
+        res = await apiService.products.update(parseInt(productId, 10), payload);
+      } else {
+        res = await apiService.products.create(payload);
+      }
+
+      if (res && res.success) {
+        showToast(isEdit ? 'Product updated successfully!' : 'Product added successfully!');
+        navigation.goBack();
+      } else {
+        showToast('Operation failed');
+      }
+    } catch (err: any) {
+      if (!syncService.getIsConnected()) {
+        syncService.queueAction('ADD_PRODUCT', payload);
+        showToast('Offline: Product queued');
+        Alert.alert(
+          'Offline Mode',
+          'Your product addition has been saved offline. It will submit automatically when your connection is restored.'
+        );
+        navigation.goBack();
+      } else {
+        showToast(err.message || 'Failed to save product');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleCameraUpload = () => {
-    // Mock Camera Upload
-    Alert.alert("Camera", "Opening Camera to take product photo...");
-    setTimeout(() => {
-      setImageUri('https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=400&q=80');
-    }, 1000);
-  };
+  const handleSimulateUpload = (type: 'camera' | 'gallery') => {
+    setUploading(true);
+    setUploadProgress(0);
+    showToast(type === 'camera' ? 'Opening Camera...' : 'Opening Gallery...');
 
-  const handleGalleryUpload = () => {
-    // Mock Gallery Upload
-    Alert.alert("Gallery", "Opening Photo Gallery...");
-    setTimeout(() => {
-      setImageUri('https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80');
-    }, 1000);
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 25;
+      setUploadProgress(progress);
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          const mockUrl = type === 'camera'
+            ? 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=400&q=80'
+            : 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80';
+          setImageUri(mockUrl);
+          setUploading(false);
+          setImageModalVisible(false);
+          showToast('Product image uploaded!');
+        }, 200);
+      }
+    }, 100);
   };
 
   const handleVoiceInput = () => {
-    // Mock Voice Input
-    Alert.alert("Listening...", "Speak the product name.");
+    showToast('Listening...');
     setTimeout(() => {
-      setValue('productName', 'Fresh Organic Tomatoes');
-    }, 2000);
+      setValue('productName', 'Premium Ponni Rice');
+      showToast('Recognized: Premium Ponni Rice');
+    }, 1500);
   };
+
+  // Keyword Option select handle
+  const handleKeywordSelect = (productKeyword: string) => {
+    setValue('productName', productKeyword);
+    if (selectedPresetCat) {
+      setValue('category', selectedPresetCat);
+    }
+    // Auto populate description for usability
+    setValue('description', `Fresh and organic premium quality ${productKeyword} directly sourced for local consumers in Sankarapuram. Sourced under strict quality controls.`);
+    showToast(`Pre-populated ${productKeyword}`);
+  };
+
+  if (fetchingProduct) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.centeredContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={{ marginTop: 12 }}>Loading product details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <IconButton icon="arrow-left" size={24} onPress={() => navigation.goBack()} style={styles.backButton} />
-        <Text variant="titleLarge" style={styles.headerTitle}>Add New Product</Text>
+        <Text variant="titleLarge" style={styles.headerTitle}>
+          {isEdit ? 'Edit Product Details' : 'Add New Product'}
+        </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -90,7 +229,10 @@ export default function AddProductScreen() {
             </View>
           ) : (
             <View style={styles.uploadButtonsContainer}>
-              <TouchableOpacity style={styles.uploadButton} onPress={handleCameraUpload}>
+              <TouchableOpacity style={styles.uploadButton} onPress={() => {
+                setImageModalVisible(true);
+                handleSimulateUpload('camera');
+              }}>
                 <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '15' }]}>
                   <MaterialCommunityIcons name="camera" size={32} color={theme.colors.primary} />
                 </View>
@@ -99,13 +241,61 @@ export default function AddProductScreen() {
               
               <View style={styles.divider} />
               
-              <TouchableOpacity style={styles.uploadButton} onPress={handleGalleryUpload}>
+              <TouchableOpacity style={styles.uploadButton} onPress={() => {
+                setImageModalVisible(true);
+                handleSimulateUpload('gallery');
+              }}>
                 <View style={[styles.iconCircle, { backgroundColor: theme.colors.secondary + '15' }]}>
                   <MaterialCommunityIcons name="image-multiple" size={32} color={theme.colors.secondary} />
                 </View>
                 <Text style={{ marginTop: 8, fontWeight: '500' }}>Gallery</Text>
               </TouchableOpacity>
             </View>
+          )}
+        </Surface>
+
+        {/* Easy Keyword Options Selector */}
+        <Text variant="titleMedium" style={styles.sectionTitle}>
+          💡 Easy Fill: Select Product Keyword
+        </Text>
+        <Surface style={styles.presetContainer} elevation={1}>
+          <Text variant="bodySmall" style={styles.presetLabel}>1. Select Category:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            {CATEGORY_LIST.map((cat) => {
+              const isSelected = selectedPresetCat === cat;
+              return (
+                <TouchableOpacity 
+                  key={cat} 
+                  onPress={() => {
+                    setSelectedPresetCat(cat);
+                    setValue('category', cat);
+                  }}
+                  style={[styles.presetChip, isSelected ? styles.presetChipActive : null]}
+                >
+                  <Text style={[styles.presetChipText, isSelected ? styles.presetChipTextActive : null]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {selectedPresetCat && (
+            <>
+              <Text variant="bodySmall" style={styles.presetLabel}>2. Select Item Keyword:</Text>
+              <View style={styles.keywordGrid}>
+                {KEYWORD_PRESETS[selectedPresetCat].map((kw) => (
+                  <TouchableOpacity 
+                    key={kw} 
+                    onPress={() => handleKeywordSelect(kw)}
+                    style={styles.keywordOptionChip}
+                  >
+                    <MaterialCommunityIcons name="plus" size={14} color={theme.colors.primary} />
+                    <Text style={styles.keywordOptionText}>{kw}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
           )}
         </Surface>
 
@@ -180,7 +370,9 @@ export default function AddProductScreen() {
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
                   mode="outlined"
-                  label="Quantity (e.g. 1 kg)"
+                  label="Stock Quantity"
+                  keyboardType="numeric"
+                  placeholder="e.g. 10"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
@@ -216,13 +408,31 @@ export default function AddProductScreen() {
         <Button 
           mode="contained" 
           onPress={handleSubmit(onSubmit)} 
+          loading={submitting}
+          disabled={submitting || uploading}
           style={styles.submitButton}
           contentStyle={styles.submitButtonContent}
         >
-          Add Product
+          {isEdit ? 'Save Changes' : 'Add Product'}
         </Button>
         
       </ScrollView>
+
+      {/* Simulated Upload Status Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={styles.modalContent} elevation={4}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.progressText}>
+              Simulating photo upload: {uploadProgress}%
+            </Text>
+          </Surface>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -310,5 +520,81 @@ const styles = StyleSheet.create({
   },
   submitButtonContent: {
     height: 50,
+  },
+  centeredContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Presets styling
+  presetContainer: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  presetLabel: {
+    fontWeight: '700',
+    color: '#666',
+    marginBottom: 8,
+  },
+  presetChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  presetChipActive: {
+    backgroundColor: '#E6F0FF',
+    borderColor: '#0066FF',
+  },
+  presetChipText: {
+    fontSize: 13,
+    color: '#333',
+    fontWeight: '500',
+  },
+  presetChipTextActive: {
+    color: '#0066FF',
+  },
+  keywordGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  keywordOptionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F4FF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#CCE0FF',
+  },
+  keywordOptionText: {
+    fontSize: 13,
+    color: '#0066FF',
+    fontWeight: '500',
+    marginLeft: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    width: 250,
+  },
+  progressText: {
+    marginTop: 12,
+    fontWeight: 'bold',
   },
 });

@@ -7,6 +7,10 @@ import { RootStackParamList } from '../navigation/types';
 
 import { storage, StorageKeys } from '../services/storage';
 
+import { useAppDispatch } from '../redux/hooks';
+import { checkProfileStatus, setProfileRole } from '../redux/slices/profileSlice';
+import { setRole } from '../redux/slices/appSlice';
+
 type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
 
 const { width } = Dimensions.get('window');
@@ -14,6 +18,7 @@ const { width } = Dimensions.get('window');
 export default function SplashScreen() {
   const theme = useTheme();
   const navigation = useNavigation<SplashScreenNavigationProp>();
+  const dispatch = useAppDispatch();
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -35,18 +40,59 @@ export default function SplashScreen() {
       })
     ]).start();
 
-    // Navigate to next screen after 2.5 seconds
-    const timer = setTimeout(() => {
-      const hasSelectedLanguage = storage.getBoolean('hasSelectedLanguage');
-      if (hasSelectedLanguage) {
-        navigation.replace('Login');
-      } else {
+    // Check auth and auto-login after 2.5 seconds
+    const timer = setTimeout(async () => {
+      const token = storage.getString('APP_JWT_TOKEN');
+      const hasSelectedLanguage = storage.getString(StorageKeys.LANGUAGE) !== undefined;
+
+      if (!hasSelectedLanguage) {
         navigation.replace('LanguageSelection');
+        return;
       }
+
+      if (token) {
+        try {
+          // Verify user auth & profile status on backend
+          const resultAction = await dispatch(checkProfileStatus());
+          
+          if (checkProfileStatus.fulfilled.match(resultAction)) {
+            const { is_profile_completed, role: backendRole } = resultAction.payload;
+            const savedRole = storage.getString(StorageKeys.USER_ROLE);
+            const role = backendRole || savedRole;
+
+            if (role) {
+              storage.set(StorageKeys.USER_ROLE, role);
+              dispatch(setRole(role));
+              dispatch(setProfileRole(role));
+            }
+            
+            if (is_profile_completed) {
+              if (role === 'Retailer' || role === 'retail_shop') {
+                navigation.replace('RetailerDashboard');
+              } else {
+                navigation.replace('MainTabs');
+              }
+            } else {
+              // Profile not complete, route to setup if role chosen, else role selection
+              if (role) {
+                navigation.replace('CreateProfile');
+              } else {
+                navigation.replace('RoleSelection');
+              }
+            }
+            return;
+          }
+        } catch (err) {
+          console.error('Auto-login error:', err);
+        }
+      }
+
+      // Default to Login Screen if not logged in or validation fails
+      navigation.replace('Login');
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [fadeAnim, scaleAnim, navigation]);
+  }, [fadeAnim, scaleAnim, navigation, dispatch]);
 
   return (
     <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
@@ -60,7 +106,7 @@ export default function SplashScreen() {
         ]}
       >
         <Image 
-          source={require('../assets/images/logo.png.jpeg')} 
+          source={require('../assets/images/logo.png.png')} 
           style={styles.logo} 
           resizeMode="contain" 
         />

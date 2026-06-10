@@ -8,6 +8,7 @@ export const StorageKeys = {
   USER_PROFILE: 'APP_USER_PROFILE',
   CACHED_LISTINGS: 'APP_CACHED_LISTINGS',
   SYNC_QUEUE: 'APP_SYNC_QUEUE',
+  USER_ROLE: 'APP_USER_ROLE',
 };
 
 // Helper to save JSON data

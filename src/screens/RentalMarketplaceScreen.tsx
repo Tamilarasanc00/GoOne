@@ -1,86 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView, Linking } from 'react-native';
-import { Text, Searchbar, Surface, Chip, useTheme, IconButton, Button } from 'react-native-paper';
+import { Text, Searchbar, Surface, Chip, useTheme, IconButton, Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
+import { apiService } from '../services/apiService';
+import { showToast } from '../utils/toast';
+import { StorageKeys, saveJSON, loadJSON } from '../services/storage';
 
 type RentalMarketplaceNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RentalMarketplace'>;
 
 const CATEGORIES = ['All', 'Tractor', 'Bike', 'Mini Truck', 'JCB', 'Water Tanker', 'Farming Tools'];
 
-const MOCK_RENTALS = [
-  {
-    id: '1',
-    name: 'Mahindra 575 DI Tractor',
-    owner: 'Velu',
-    category: 'Tractor',
-    pricePerDay: '₹1,500/day',
-    availability: 'Available Now',
-    image: 'https://images.unsplash.com/photo-1592837330722-1f7a0709a80e?auto=format&fit=crop&w=400&q=80',
-    location: 'Sankarapuram',
-    phone: '+919876543210',
-    isAvailable: true,
-  },
-  {
-    id: '2',
-    name: 'Honda Activa 6G',
-    owner: 'Siva Rentals',
-    category: 'Bike',
-    pricePerDay: '₹300/day',
-    availability: 'Available from Tomorrow',
-    image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=400&q=80',
-    location: 'Sankarapuram Town',
-    phone: '+919876543211',
-    isAvailable: false,
-  },
-  {
-    id: '3',
-    name: 'Tata Ace (Chota Hathi)',
-    owner: 'Murugan Transports',
-    category: 'Mini Truck',
-    pricePerDay: '₹1,200/day',
-    availability: 'Available Now',
-    image: 'https://images.unsplash.com/photo-1601058269785-5eb76db17bf7?auto=format&fit=crop&w=400&q=80',
-    location: 'Coimbatore, TN',
-    phone: '+919876543212',
-    isAvailable: true,
-  },
-  {
-    id: '4',
-    name: 'JCB 3DX Backhoe Loader',
-    owner: 'RR Earthmovers',
-    category: 'JCB',
-    pricePerDay: '₹5,000/day',
-    availability: 'Available Now',
-    image: 'https://images.unsplash.com/photo-1579738012678-067f92b7754b?auto=format&fit=crop&w=400&q=80',
-    location: 'Salem, TN',
-    phone: '+919876543213',
-    isAvailable: true,
-  },
-];
-
 export default function RentalMarketplaceScreen() {
   const theme = useTheme();
   const navigation = useNavigation<RentalMarketplaceNavigationProp>();
 
+  const [rentals, setRentals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
-  const filteredRentals = MOCK_RENTALS.filter(rental => {
-    const matchesSearch = rental.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          rental.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || rental.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleContact = (phone: string) => {
-    Linking.openURL(`tel:${phone}`);
+  const fetchRentals = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+    try {
+      const res = await apiService.rentals.list(
+        activeCategory === 'All' ? undefined : activeCategory,
+        searchQuery || undefined
+      );
+      if (res.success && res.rentals) {
+        setRentals(res.rentals);
+        saveJSON(StorageKeys.CACHED_LISTINGS + '_rentals', res.rentals);
+        showToast(isRefresh ? 'Rentals list refreshed' : 'Rentals list loaded');
+      }
+    } catch (err: any) {
+      const cached = loadJSON<any[]>(StorageKeys.CACHED_LISTINGS + '_rentals');
+      if (cached && cached.length > 0) {
+        setRentals(cached);
+        showToast('Offline: Loaded cached rentals');
+      } else {
+        const errMsg = err.message || 'Failed to fetch rentals';
+        setError(errMsg);
+        showToast(errMsg);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const renderRentalCard = ({ item }: { item: typeof MOCK_RENTALS[0] }) => (
+  useEffect(() => {
+    fetchRentals();
+  }, [activeCategory, searchQuery]);
+
+  const handleCategoryPress = React.useCallback((category: string) => {
+    setActiveCategory(category);
+    showToast(`Filtering by ${category}`);
+  }, []);
+
+  const handleContact = React.useCallback((phone: string, ownerName: string) => {
+    showToast(`Calling ${ownerName}...`);
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      showToast('Could not open phone dialer');
+    });
+  }, []);
+
+  const RentalCard = React.memo(({ item }: { item: any }) => (
     <Surface style={[styles.rentalCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
       <Image source={{ uri: item.image }} style={styles.rentalImage} />
       <View style={styles.cardContent}>
@@ -120,7 +115,7 @@ export default function RentalMarketplaceScreen() {
         <Button 
           mode="contained" 
           icon="phone" 
-          onPress={() => handleContact(item.phone)}
+          onPress={() => handleContact(item.phone, item.owner)}
           style={styles.contactButton}
           contentStyle={styles.contactButtonContent}
         >
@@ -128,7 +123,15 @@ export default function RentalMarketplaceScreen() {
         </Button>
       </View>
     </Surface>
-  );
+  ));
+
+  const renderRentalCard = React.useCallback(({ item }: { item: any }) => (
+    <RentalCard item={item} />
+  ), [handleContact]);
+
+  const getItemLayout = React.useCallback((data: any, index: number) => (
+    {length: 260, offset: 260 * index, index}
+  ), []);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
@@ -161,7 +164,7 @@ export default function RentalMarketplaceScreen() {
             <Chip
               key={category}
               selected={activeCategory === category}
-              onPress={() => setActiveCategory(category)}
+              onPress={() => handleCategoryPress(category)}
               style={[
                 styles.categoryChip,
                 activeCategory === category ? { backgroundColor: theme.colors.primary } : undefined
@@ -174,22 +177,48 @@ export default function RentalMarketplaceScreen() {
         </ScrollView>
       </View>
 
-      {/* Rental List */}
-      <FlatList
-        data={filteredRentals}
-        keyExtractor={(item) => item.id}
-        renderItem={renderRentalCard}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="tractor-variant" size={64} color={theme.colors.onSurfaceVariant} />
-            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
-              No rentals found
-            </Text>
-          </View>
-        }
-      />
+      {/* Loader / Error / List */}
+      {loading && !refreshing ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={{ marginTop: 12, color: theme.colors.onSurfaceVariant }}>
+            Loading rentals...
+          </Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.error} />
+          <Text variant="bodyLarge" style={{ marginTop: 12, color: theme.colors.error, textAlign: 'center' }}>
+            {error}
+          </Text>
+          <Button mode="contained" onPress={() => fetchRentals()} style={{ marginTop: 16 }}>
+            Retry
+          </Button>
+        </View>
+      ) : (
+        <FlatList
+          data={rentals}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderRentalCard}
+          getItemLayout={getItemLayout}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={() => fetchRentals(true)}
+          removeClippedSubviews={true}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="tractor-variant" size={64} color={theme.colors.onSurfaceVariant} />
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
+                No rentals found
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -289,5 +318,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 64,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
   },
 });

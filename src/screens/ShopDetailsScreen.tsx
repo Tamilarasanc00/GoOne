@@ -1,42 +1,135 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Image, FlatList } from 'react-native';
-import { Text, Surface, IconButton, Button, useTheme, Divider } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Image, FlatList, Linking } from 'react-native';
+import { Text, Surface, IconButton, Button, useTheme, Divider, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
+import ReviewSection from '../components/ReviewSection';
+import { apiService } from '../services/apiService';
+import { showToast } from '../utils/toast';
 
 type ShopDetailsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ShopDetails'>;
 type ShopDetailsRouteProp = RouteProp<RootStackParamList, 'ShopDetails'>;
-
-const MOCK_PRODUCTS = [
-  { id: '1', name: 'Fresh Tomatoes', price: '₹40/kg', image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=400&q=80' },
-  { id: '2', name: 'Onions', price: '₹60/kg', image: 'https://images.unsplash.com/photo-1587049352847-81a56d773c1c?auto=format&fit=crop&w=400&q=80' },
-  { id: '3', name: 'Potatoes', price: '₹35/kg', image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=400&q=80' },
-  { id: '4', name: 'Carrots', price: '₹80/kg', image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=400&q=80' },
-  { id: '5', name: 'Green Chilies', price: '₹120/kg', image: 'https://images.unsplash.com/photo-1588880629631-0162547b7c2f?auto=format&fit=crop&w=400&q=80' },
-  { id: '6', name: 'Garlic', price: '₹200/kg', image: 'https://images.unsplash.com/photo-1540148426945-de5d2036720d?auto=format&fit=crop&w=400&q=80' },
-];
 
 export default function ShopDetailsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<ShopDetailsNavigationProp>();
   const route = useRoute<ShopDetailsRouteProp>();
 
-  // Use the passed ID or mock data for preview
   const shopId = route.params?.shopId || '1';
-  const shopName = route.params?.shopName || 'Sri Murugan Stores';
+  const initialShopName = route.params?.shopName || 'Shop Details';
 
-  const renderProduct = ({ item }: { item: typeof MOCK_PRODUCTS[0] }) => (
-    <Surface style={[styles.productCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
-      <Image source={{ uri: item.image }} style={styles.productImage} />
-      <View style={styles.productInfo}>
-        <Text variant="titleSmall" style={styles.productName} numberOfLines={1}>{item.name}</Text>
-        <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{item.price}</Text>
-      </View>
-    </Surface>
-  );
+  const [shop, setShop] = useState<any>(null);
+  const [productsList, setProductsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [avgRating, setAvgRating] = useState<number>(4.5);
+  const [reviewsCount, setReviewsCount] = useState<number>(12);
+
+  const fetchDetails = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiService.shops.getDetails(parseInt(shopId, 10));
+      if (res.success && res.shop) {
+        setShop(res.shop);
+        setProductsList(res.products || []);
+        showToast('Shop details loaded');
+      } else {
+        setError('Shop details not found');
+        showToast('Shop details not found');
+      }
+    } catch (err: any) {
+      const errMsg = err.message || 'Failed to load shop details';
+      setError(errMsg);
+      showToast(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDetails();
+  }, [shopId]);
+
+  const handleCall = () => {
+    const phone = shop?.owner_phone || '+919876543210';
+    showToast(`Calling ${shop?.name || 'shop'}...`);
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      showToast('Could not open phone dialer');
+    });
+  };
+
+  const handleWhatsApp = () => {
+    const phone = shop?.owner_phone || '+919876543210';
+    const formattedPhone = phone.replace(/[^0-9]/g, '');
+    const url = `whatsapp://send?phone=${formattedPhone}`;
+    const fallbackUrl = `https://wa.me/${formattedPhone}`;
+    
+    showToast(`Opening WhatsApp for ${shop?.name || 'shop'}...`);
+    
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(url);
+        } else {
+          return Linking.openURL(fallbackUrl);
+        }
+      })
+      .catch(() => {
+        showToast('Could not open WhatsApp');
+      });
+  };
+
+  const renderProduct = ({ item }: { item: any }) => {
+    const priceText = `₹${parseFloat(item.price).toLocaleString('en-IN')}${item.category === 'Vegetables' || item.category === 'Fruits' ? '/kg' : ''}`;
+    const imageUri = item.image_url || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=400&q=80';
+
+    return (
+      <Surface style={[styles.productCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
+        <Image source={{ uri: imageUri }} style={styles.productImage} />
+        <View style={styles.productInfo}>
+          <Text variant="titleSmall" style={styles.productName} numberOfLines={1}>{item.name}</Text>
+          <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{priceText}</Text>
+        </View>
+      </Surface>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={{ marginTop: 12, color: theme.colors.onSurfaceVariant }}>
+            Loading shop details...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !shop) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.error} />
+          <Text variant="bodyLarge" style={{ marginTop: 12, color: theme.colors.error, textAlign: 'center' }}>
+            {error || 'Shop details could not be loaded'}
+          </Text>
+          <Button mode="contained" onPress={fetchDetails} style={{ marginTop: 16 }}>
+            Retry
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const shopName = shop.name || initialShopName;
+  const description = shop.description || 'Grocery & Retail Shop';
+  const bannerImageUri = shop.owner_avatar || 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=800&q=80';
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
@@ -61,7 +154,7 @@ export default function ShopDetailsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Banner */}
         <Image 
-          source={{ uri: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }} 
+          source={{ uri: bannerImageUri }} 
           style={styles.bannerImage} 
         />
 
@@ -70,16 +163,16 @@ export default function ShopDetailsScreen() {
           <Text variant="headlineSmall" style={styles.shopName}>{shopName}</Text>
           <View style={styles.ratingRow}>
             <View style={styles.ratingBadge}>
-              <Text style={styles.ratingText}>4.5</Text>
+              <Text style={styles.ratingText}>{avgRating}</Text>
               <MaterialCommunityIcons name="star" size={14} color="#FFF" />
             </View>
-            <Text style={{ color: theme.colors.onSurfaceVariant, marginLeft: 8 }}>(128 Reviews)</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginLeft: 8 }}>({reviewsCount} Reviews)</Text>
             <View style={styles.dotDivider} />
-            <Text style={{ color: theme.colors.onSurfaceVariant }}>1.2 km away</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>{shop.distance || '1.2 km'} away</Text>
           </View>
           
           <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
-            Fresh groceries, vegetables, and daily essentials available at wholesale prices.
+            {description}
           </Text>
 
           <View style={styles.workingHoursContainer}>
@@ -88,13 +181,13 @@ export default function ShopDetailsScreen() {
               <Text style={{ fontWeight: 'bold', color: '#4CAF50' }}>Open Now</Text> • 08:00 AM - 09:30 PM
             </Text>
           </View>
-
+          
           {/* Action Buttons Row */}
           <View style={styles.actionsRow}>
             <Button 
               icon="phone" 
               mode="contained" 
-              onPress={() => {}} 
+              onPress={handleCall} 
               style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
               labelStyle={styles.actionButtonLabel}
             >
@@ -103,7 +196,7 @@ export default function ShopDetailsScreen() {
             <Button 
               icon="whatsapp" 
               mode="contained" 
-              onPress={() => {}} 
+              onPress={handleWhatsApp} 
               style={[styles.actionButton, { backgroundColor: '#25D366' }]}
               labelStyle={styles.actionButtonLabel}
             >
@@ -126,15 +219,32 @@ export default function ShopDetailsScreen() {
         <View style={styles.productsContainer}>
           <Text variant="titleLarge" style={styles.productsHeader}>Our Products</Text>
           <FlatList
-            data={MOCK_PRODUCTS}
-            keyExtractor={(item) => item.id}
+            data={productsList}
+            keyExtractor={(item) => String(item.id)}
             renderItem={renderProduct}
             numColumns={2}
             scrollEnabled={false}
             columnWrapperStyle={styles.productRow}
             contentContainerStyle={styles.productList}
+            ListEmptyComponent={
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginVertical: 24 }}>
+                No products listed yet.
+              </Text>
+            }
           />
         </View>
+
+        <Divider style={styles.divider} />
+
+        {/* Reviews Section */}
+        <ReviewSection 
+          targetType="Shop" 
+          targetId={parseInt(shopId, 10) || 1} 
+          onRatingFetched={(avg, count) => {
+            setAvgRating(avg);
+            setReviewsCount(count);
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -149,14 +259,14 @@ const styles = StyleSheet.create({
   },
   absoluteHeader: {
     position: 'absolute',
-    top: 0, // Handled by SafeAreaView edges
+    top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 8,
-    paddingVertical: 12, // Offset for safe area usually
+    paddingVertical: 12,
   },
   bannerImage: {
     width: '100%',
@@ -199,7 +309,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#F5F5F5', // Light background for contrast
+    backgroundColor: '#F5F5F5',
     borderRadius: 8,
   },
   workingHoursText: {
@@ -228,7 +338,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 6,
-    backgroundColor: '#F0F0F0', // Thick separator between sections
+    backgroundColor: '#F0F0F0',
   },
   productsContainer: {
     padding: 16,
@@ -261,4 +371,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
   },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
 });
+

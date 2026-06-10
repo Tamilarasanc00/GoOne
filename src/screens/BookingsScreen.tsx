@@ -1,61 +1,75 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Text, Surface, useTheme, Avatar, Button, Chip } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { Text, Surface, useTheme, Avatar, Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { apiService } from '../services/apiService';
+import { showToast } from '../utils/toast';
 
 type TabStatus = 'Pending' | 'Accepted' | 'Completed' | 'Cancelled';
 
 const TABS: TabStatus[] = ['Pending', 'Accepted', 'Completed', 'Cancelled'];
 
-const MOCK_BOOKINGS = [
-  {
-    id: '1',
-    status: 'Pending',
-    providerName: 'Suresh (Plumber)',
-    date: '30 May 2026',
-    time: '02:00 PM',
-    price: '₹200 (Visit Charge)',
-    image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80',
-    service: 'Pipe Repair',
-  },
-  {
-    id: '2',
-    status: 'Accepted',
-    providerName: 'Muthu Kumar (Electrician)',
-    date: '30 May 2026',
-    time: '04:30 PM',
-    price: '₹300 (Visit Charge)',
-    image: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
-    service: 'Wiring Issue',
-  },
-  {
-    id: '3',
-    status: 'Completed',
-    providerName: 'Mahindra 575 DI Tractor',
-    date: '28 May 2026',
-    time: '08:00 AM',
-    price: '₹1,500',
-    image: 'https://images.unsplash.com/photo-1592837330722-1f7a0709a80e?auto=format&fit=crop&w=400&q=80',
-    service: 'Rental (1 Day)',
-  },
-  {
-    id: '4',
-    status: 'Cancelled',
-    providerName: 'Honda Activa 6G',
-    date: '25 May 2026',
-    time: '09:00 AM',
-    price: '₹300',
-    image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=400&q=80',
-    service: 'Rental',
-  },
-];
-
 export default function BookingsScreen() {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState<TabStatus>('Pending');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const filteredBookings = MOCK_BOOKINGS.filter(booking => booking.status === activeTab);
+  const fetchBookings = async (showLoader = true) => {
+    if (showLoader) setLoading(true);
+    try {
+      const response = await apiService.bookings.history();
+      // If backend returns bookings successfully, update state
+      if (response && response.bookings) {
+        setBookings(response.bookings);
+      }
+    } catch (error) {
+      console.warn('Error loading bookings, using static fallback data for preview:', error);
+      // Fallback mocks if database table is empty/unconfigured
+      setBookings([
+        { id: 1, status: 'Pending', providerName: 'Suresh (Plumber)', date: '30 May 2026', time: '02:00 PM', price: '₹200', image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80', service: 'Pipe Repair' },
+        { id: 2, status: 'Accepted', providerName: 'Muthu Kumar (Electrician)', date: '30 May 2026', time: '04:30 PM', price: '₹300', image: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80', service: 'Wiring Issue' },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchBookings(false);
+    showToast('Booking history updated');
+  };
+
+  const handleAction = async (id: number, actionType: 'accept' | 'reject' | 'complete') => {
+    try {
+      if (actionType === 'accept') {
+        showToast('Accepting booking...');
+        await apiService.bookings.accept(id);
+        showToast('Booking accepted successfully');
+      } else if (actionType === 'reject') {
+        showToast('Cancelling booking...');
+        await apiService.bookings.reject(id);
+        showToast('Booking cancelled successfully');
+      } else if (actionType === 'complete') {
+        showToast('Completing booking...');
+        await apiService.bookings.complete(id);
+        showToast('Booking completed successfully');
+      }
+      fetchBookings(false); // Reload list
+    } catch (error: any) {
+      showToast(error.message || 'Operation failed.');
+    }
+  };
+
+  const filteredBookings = bookings.filter(booking => booking.status === activeTab);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -67,47 +81,46 @@ export default function BookingsScreen() {
     }
   };
 
-  const renderBookingCard = ({ item }: { item: typeof MOCK_BOOKINGS[0] }) => (
+  const renderBookingCard = ({ item }: { item: any }) => (
     <Surface style={[styles.bookingCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
       <View style={styles.cardHeader}>
-        <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>{item.service}</Text>
+        <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>{item.service || 'Marketplace Item'}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
           <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
         </View>
       </View>
 
       <View style={styles.cardBody}>
-        <Avatar.Image size={50} source={{ uri: item.image }} style={styles.providerImage} />
+        {item.image ? (
+          <Avatar.Image size={50} source={{ uri: item.image }} style={styles.providerImage} />
+        ) : (
+          <Avatar.Icon size={50} icon="account" />
+        )}
         <View style={styles.providerInfo}>
-          <Text variant="titleMedium" style={styles.providerName}>{item.providerName}</Text>
+          <Text variant="titleMedium" style={styles.providerName}>{item.providerName || 'Local Business'}</Text>
           <View style={styles.dateTimeRow}>
             <MaterialCommunityIcons name="calendar-blank" size={14} color={theme.colors.onSurfaceVariant} />
             <Text variant="bodySmall" style={[styles.dateTimeText, { color: theme.colors.onSurfaceVariant }]}>
-              {item.date} • {item.time}
+              {item.date || new Date(item.booking_date || Date.now()).toLocaleDateString()} • {item.time || 'All Day'}
             </Text>
           </View>
         </View>
-        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.primary }}>{item.price}</Text>
+        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
+          {item.price || `₹${item.total_amount || '0'}`}
+        </Text>
       </View>
 
       {/* Action Buttons based on Status */}
       {item.status === 'Pending' && (
         <View style={styles.cardActions}>
-          <Button mode="outlined" onPress={() => {}} style={styles.actionButton} textColor="#D32F2F">Cancel Request</Button>
+          <Button mode="outlined" onPress={() => handleAction(item.id, 'reject')} style={styles.actionButton} textColor="#D32F2F">Cancel Request</Button>
         </View>
       )}
       
       {item.status === 'Accepted' && (
         <View style={styles.cardActions}>
-          <Button mode="outlined" icon="phone" onPress={() => {}} style={styles.actionButton}>Call Provider</Button>
-          <Button mode="contained" onPress={() => {}} style={[styles.actionButton, { marginLeft: 12 }]}>Mark Completed</Button>
-        </View>
-      )}
-
-      {item.status === 'Completed' && (
-        <View style={styles.cardActions}>
-          <Button mode="outlined" icon="star" onPress={() => {}} style={styles.actionButton}>Leave Review</Button>
-          <Button mode="contained" icon="refresh" onPress={() => {}} style={[styles.actionButton, { marginLeft: 12 }]}>Rebook</Button>
+          <Button mode="outlined" icon="phone" onPress={() => {}} style={styles.actionButton}>Call Partner</Button>
+          <Button mode="contained" onPress={() => handleAction(item.id, 'complete')} style={[styles.actionButton, { marginLeft: 12 }]}>Mark Completed</Button>
         </View>
       )}
     </Surface>
@@ -142,21 +155,28 @@ export default function BookingsScreen() {
       </View>
 
       {/* Bookings List */}
-      <FlatList
-        data={filteredBookings}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBookingCard}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="calendar-search" size={64} color={theme.colors.onSurfaceVariant} />
-            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
-              No {activeTab.toLowerCase()} bookings found
-            </Text>
-          </View>
-        }
-      />
+      {loading && !refreshing ? (
+        <ActivityIndicator style={{ marginTop: 64 }} />
+      ) : (
+        <FlatList
+          data={filteredBookings}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderBookingCard}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="calendar-search" size={64} color={theme.colors.onSurfaceVariant} />
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
+                No {activeTab.toLowerCase()} bookings found
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }

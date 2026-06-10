@@ -8,6 +8,8 @@ export type SyncAction = {
   timestamp: number;
 };
 
+import { apiService } from './apiService';
+
 class SyncService {
   private isConnected: boolean = false;
   private isSyncing: boolean = false;
@@ -21,6 +23,10 @@ class SyncService {
     if (this.unsubscribe) {
       this.unsubscribe();
     }
+  }
+
+  getIsConnected(): boolean {
+    return this.isConnected;
   }
 
   private handleConnectivityChange = (state: NetInfoState) => {
@@ -94,14 +100,19 @@ class SyncService {
    * Execute the actual sync logic for a single action
    */
   private async syncAction(action: SyncAction): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // Mock API call latency
-      setTimeout(() => {
-        // In a real app, this would use axios or fetch to hit the backend endpoint
-        // e.g. await api.post('/sync', action.payload);
-        resolve();
-      }, 500);
-    });
+    const { type, payload } = action;
+    console.log(`[SyncService] Syncing action type: ${type}`);
+    if (type === 'BOOK_SERVICE') {
+      await apiService.bookings.create(payload);
+    } else if (type === 'ADD_PRODUCT') {
+      await apiService.products.create(payload);
+    } else if (type === 'UPDATE_PROFILE') {
+      await apiService.profile.completeProfile(payload);
+    } else if (type === 'GENERIC_SYNC') {
+      // no-op or custom sync action
+    } else {
+      throw new Error(`Unknown action type: ${type}`);
+    }
   }
 }
 
