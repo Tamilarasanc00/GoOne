@@ -21,6 +21,7 @@ export type RootStackParamList = {
   WorkerDetails: { workerId: string; workerName: string };
   ShopDetails: { shopId: string; shopName: string };
   MainTabs: undefined;
+  Profile: undefined;
   Settings: undefined;
   Subscription: undefined;
   EmployerDashboard: undefined;

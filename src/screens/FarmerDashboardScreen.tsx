@@ -68,7 +68,13 @@ export default function FarmerDashboardScreen() {
 
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar}><Text style={styles.avatarTxt}>🌾</Text></View>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.avatar}
+            >
+              <Text style={styles.avatarTxt}>🌾</Text>
+            </TouchableOpacity>
             <View>
               <Text style={styles.farmName}>{profile?.farm_name || user?.name || 'My Farm'}</Text>
               <Text style={styles.farmSub}>Farmer Dashboard</Text>
@@ -105,7 +111,7 @@ export default function FarmerDashboardScreen() {
 
         {/* Quick Actions */}
         <SectionHeader title="Quick Actions" />
-        <View style={styles.actionsRow}>
+        <View style={styles.actionsGrid}>
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.greenSoft }]} onPress={() => navigation.navigate('AddCrop')}>
             <Text style={{ fontSize: 28 }}>🌱</Text>
             <Text style={[styles.actionLabel, { color: Colors.greenPrimary }]}>Add Crop</Text>
@@ -114,9 +120,13 @@ export default function FarmerDashboardScreen() {
             <Text style={{ fontSize: 28 }}>✏️</Text>
             <Text style={[styles.actionLabel, { color: Colors.bluePrimary }]}>Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.purpleSoft }]} onPress={() => showToast('Marketplace coming soon')}>
+          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.purpleSoft }]} onPress={() => navigation.navigate('FarmerMarketplace')}>
             <Text style={{ fontSize: 28 }}>🛒</Text>
             <Text style={[styles.actionLabel, { color: Colors.purplePrimary }]}>Marketplace</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.blueSoft }]} onPress={() => navigation.navigate('Profile')}>
+            <Text style={{ fontSize: 28 }}>👤</Text>
+            <Text style={[styles.actionLabel, { color: Colors.bluePrimary }]}>Settings & Profile</Text>
           </TouchableOpacity>
         </View>
 
@@ -191,8 +201,8 @@ const styles = StyleSheet.create({
   rateName: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, textAlign: 'center', marginBottom: 4 },
   ratePrice: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
   rateTrend: { fontSize: 16, fontWeight: '800', marginTop: 2 },
-  actionsRow: { flexDirection: 'row', gap: 10, marginBottom: Spacing.lg },
-  actionCard: { flex: 1, borderRadius: Radius.lg, padding: Spacing.md, alignItems: 'center', gap: 6 },
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: Spacing.lg },
+  actionCard: { width: '48%', borderRadius: Radius.lg, padding: Spacing.md, alignItems: 'center', gap: 6 },
   actionLabel: { fontSize: 11, fontWeight: '700' },
   loader: { paddingVertical: 32, alignItems: 'center' },
   errorCard: { padding: Spacing.md, backgroundColor: Colors.redSoft, borderRadius: Radius.md, marginBottom: Spacing.md },

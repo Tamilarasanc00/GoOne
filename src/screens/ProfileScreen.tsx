@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { storage } from '../services/storage';
+import { storage, StorageKeys } from '../services/storage';
 import { showToast } from '../utils/toast';
 import { useAppSelector, useAppDispatch } from '../redux/hooks';
 import { resetProfile } from '../redux/slices/profileSlice';
@@ -47,11 +47,19 @@ function MenuItem({ emoji, title, subtitle, onPress, danger, rightEl }: MenuItem
   );
 }
 
+const getNormalizedRole = (role: string | null): string => {
+  if (!role) return 'customer';
+  const lower = role.toLowerCase().replace(' ', '_');
+  if (lower === 'retailer') return 'retail_shop';
+  return lower;
+};
+
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.profile.user);
   const role = useAppSelector((state: any) => state.profile.role);
+  const profile = useAppSelector((state: any) => state.profile.profile);
   const [darkMode, setDarkMode] = useState(false);
   const [notifs, setNotifs] = useState(true);
 
@@ -75,7 +83,8 @@ export default function ProfileScreen() {
 
   const userName = user?.name || 'GoOne User';
   const firstName = userName.split(' ')[0];
-  const roleEmoji = ROLE_EMOJI[role] || '👤';
+  const normalizedRole = getNormalizedRole(role);
+  const roleEmoji = ROLE_EMOJI[normalizedRole] || '👤';
   const roleLabel = role ? role.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'Customer';
 
   const goToDashboard = () => {
@@ -85,7 +94,7 @@ export default function ProfileScreen() {
       service_worker: 'WorkerDashboard',
       rental_owner: 'RentalDashboard',
     };
-    const screen = screens[role];
+    const screen = screens[normalizedRole];
     if (screen) navigation.navigate(screen as any);
     else showToast('Dashboard only available for providers');
   };
@@ -99,6 +108,16 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View style={[styles.circle, { width: 200, height: 200, top: -60, right: -60 }]} />
           <View style={[styles.circle, { width: 120, height: 120, bottom: -10, left: 30 }]} />
+
+          {navigation.canGoBack() && (
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.backButtonTxt}>← Go Back</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.headerContent}>
             {/* Avatar */}
@@ -140,21 +159,52 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>ACCOUNT</Text>
           <View style={styles.menuGroup}>
             <MenuItem emoji="✏️" title="Edit Profile" subtitle="Update your details" onPress={() => navigation.navigate('CreateProfile', { isEdit: true })} />
+            {normalizedRole === 'retail_shop' && profile?.id && (
+              <>
+                <View style={styles.divider} />
+                <MenuItem 
+                  emoji="🏪" 
+                  title="View Public Shop" 
+                  subtitle="See how customers view your shop" 
+                  onPress={() => navigation.navigate('ShopDetails', { shopId: String(profile.id), shopName: profile.name })} 
+                />
+              </>
+            )}
+            {normalizedRole === 'service_worker' && profile?.id && (
+              <>
+                <View style={styles.divider} />
+                <MenuItem 
+                  emoji="🔧" 
+                  title="View Public Profile" 
+                  subtitle="See how customers view your profile" 
+                  onPress={() => navigation.navigate('WorkerDetails', { workerId: String(profile.id), workerName: user?.name || 'Worker' })} 
+                />
+              </>
+            )}
             <View style={styles.divider} />
             <MenuItem emoji="🌐" title="Language" subtitle="தமிழ் · Tamil" onPress={() => navigation.navigate('LanguageSelection')} />
           </View>
 
           {/* Activity */}
-          <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
-          <View style={styles.menuGroup}>
-            <MenuItem emoji={roleEmoji} title="My Dashboard" subtitle={`${roleLabel} dashboard`} onPress={goToDashboard} />
-            <View style={styles.divider} />
-            <MenuItem emoji="💼" title="Job Postings" subtitle="Hire workers & manage jobs" onPress={() => navigation.navigate('EmployerDashboard')} />
-            <View style={styles.divider} />
-            <MenuItem emoji="📅" title="My Bookings" subtitle="Active and past bookings" onPress={() => navigation.navigate('MainTabs')} />
-            <View style={styles.divider} />
-            <MenuItem emoji="❤️" title="Saved" subtitle="Favorites shops & workers" onPress={() => showToast('Coming soon!')} />
-          </View>
+          {normalizedRole === 'customer' ? (
+            <>
+              <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
+              <View style={styles.menuGroup}>
+                <MenuItem emoji="💼" title="Job Postings" subtitle="Hire workers & manage jobs" onPress={() => navigation.navigate('EmployerDashboard')} />
+                <View style={styles.divider} />
+                <MenuItem emoji="📅" title="My Bookings" subtitle="Active and past bookings" onPress={() => navigation.navigate('MainTabs')} />
+                <View style={styles.divider} />
+                <MenuItem emoji="❤️" title="Saved" subtitle="Favorites shops & workers" onPress={() => showToast('Coming soon!')} />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
+              <View style={styles.menuGroup}>
+                <MenuItem emoji={roleEmoji} title="My Dashboard" subtitle={`${roleLabel} dashboard`} onPress={goToDashboard} />
+              </View>
+            </>
+          )}
 
           {/* Preferences */}
           <Text style={styles.sectionTitle}>PREFERENCES</Text>
@@ -219,11 +269,26 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.purplePrimary,
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.md + 24, // Add spacing for back button at top
     paddingBottom: Spacing.xl,
     overflow: 'hidden',
     position: 'relative',
     alignItems: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: Spacing.md,
+    left: Spacing.md,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+  },
+  backButtonTxt: {
+    color: Colors.white,
+    fontWeight: '700',
+    fontSize: 12,
   },
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.07)' },
   headerContent: { alignItems: 'center', zIndex: 1, width: '100%' },

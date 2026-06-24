@@ -68,7 +68,13 @@ export default function WorkerDashboardScreen() {
 
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar}><Text style={styles.avatarTxt}>🔧</Text></View>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.avatar}
+            >
+              <Text style={styles.avatarTxt}>🔧</Text>
+            </TouchableOpacity>
             <View>
               <Text style={styles.workerName}>{workerName}</Text>
               <Text style={styles.workerSub}>Service Worker Dashboard</Text>
@@ -154,6 +160,13 @@ export default function WorkerDashboardScreen() {
                 </View>
               </View>
             ))}
+            <TouchableOpacity 
+              style={styles.viewPublicProfileBtn}
+              onPress={() => navigation.navigate('WorkerDetails', { workerId: String(profile.id), workerName: workerName })}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewPublicProfileTxt}>👁️ View Public Profile</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -224,6 +237,19 @@ const styles = StyleSheet.create({
   profileCard: {
     backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.md,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 2, gap: 14,
+  },
+  viewPublicProfileBtn: {
+    borderWidth: 1.5,
+    borderColor: Colors.purplePrimary,
+    borderRadius: Radius.full,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  viewPublicProfileTxt: {
+    color: Colors.purplePrimary,
+    fontWeight: '700',
+    fontSize: 13,
   },
   detailRow: { flexDirection: 'row', alignItems: 'center' },
   detailLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },

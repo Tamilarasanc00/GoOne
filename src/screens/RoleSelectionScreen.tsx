@@ -114,8 +114,9 @@ export default function RoleSelectionScreen() {
     }
 
     Tts.setDefaultLanguage('en-IN');
-    const textToSpeak = "ThankYou For Choosing Go One Ramya Choose Your Role. Select how you want to use Go One. " +
-      ROLES.map(r => `${r.name}, ${r.desc}.`).join(" ");
+    const textToSpeak = "Welcome to Go One. Thank you for choosing us. Please select your role and choose how you would like to use Go One.";
+    //const textToSpeak = "ThankYou For Choosing Go One Ramya Choose Your Role. Select how you want to use Go One. " +
+    ROLES.map(r => `${r.name}, ${r.desc}.`).join(" ");
 
     Tts.speak(textToSpeak);
   };

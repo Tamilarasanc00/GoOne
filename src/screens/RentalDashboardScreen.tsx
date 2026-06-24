@@ -63,7 +63,13 @@ export default function RentalDashboardScreen() {
 
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar}><Text style={styles.avatarTxt}>🚜</Text></View>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.avatar}
+            >
+              <Text style={styles.avatarTxt}>🚜</Text>
+            </TouchableOpacity>
             <View>
               <Text style={styles.ownerName}>{ownerName}</Text>
               <Text style={styles.ownerSub}>Rental Dashboard</Text>
@@ -89,7 +95,7 @@ export default function RentalDashboardScreen() {
         
         {/* Quick Actions */}
         <SectionHeader title="Quick Actions" />
-        <View style={styles.actionsRow}>
+        <View style={styles.actionsGrid}>
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.amberSoft }]} onPress={() => navigation.navigate('AddRental')}>
             <Text style={{ fontSize: 28 }}>🚜</Text>
             <Text style={[styles.actionLabel, { color: Colors.amberPrimary }]}>Add Item</Text>
@@ -101,6 +107,10 @@ export default function RentalDashboardScreen() {
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.blueSoft }]} onPress={() => navigation.navigate('CreateProfile', { isEdit: true })}>
             <Text style={{ fontSize: 28 }}>✏️</Text>
             <Text style={[styles.actionLabel, { color: Colors.bluePrimary }]}>Edit Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.purpleSoft }]} onPress={() => navigation.navigate('Profile')}>
+            <Text style={{ fontSize: 28 }}>👤</Text>
+            <Text style={[styles.actionLabel, { color: Colors.purplePrimary }]}>Settings & Profile</Text>
           </TouchableOpacity>
         </View>
 
@@ -170,8 +180,8 @@ const styles = StyleSheet.create({
   statVal: { fontSize: 20, fontWeight: '900', color: Colors.white },
   statLbl: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   scroll: { padding: Spacing.md, paddingTop: Spacing.lg },
-  actionsRow: { flexDirection: 'row', gap: 10, marginBottom: Spacing.lg },
-  actionCard: { flex: 1, borderRadius: Radius.lg, padding: Spacing.md, alignItems: 'center', gap: 6 },
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: Spacing.lg },
+  actionCard: { width: '48%', borderRadius: Radius.lg, padding: Spacing.md, alignItems: 'center', gap: 6 },
   actionLabel: { fontSize: 11, fontWeight: '700' },
   loader: { paddingVertical: 32, alignItems: 'center' },
   errorCard: { padding: Spacing.md, backgroundColor: Colors.redSoft, borderRadius: Radius.md, marginBottom: Spacing.md },

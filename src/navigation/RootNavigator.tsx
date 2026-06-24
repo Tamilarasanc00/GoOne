@@ -22,6 +22,7 @@ import AddOfferScreen from '../screens/AddOfferScreen';
 import WorkerDetailsScreen from '../screens/WorkerDetailsScreen';
 import ShopDetailsScreen from '../screens/ShopDetailsScreen';
 import MainTabNavigator from './MainTabNavigator';
+import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -65,6 +66,7 @@ export default function RootNavigator() {
       <Stack.Screen name="WorkerDetails" component={WorkerDetailsScreen} />
       <Stack.Screen name="ShopDetails" component={ShopDetailsScreen} />
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       <Stack.Screen name="CreateProfile" component={CreateProfileScreen} />

@@ -29,6 +29,7 @@ const QUICK_ACTIONS = [
   { label: 'Add Offer', emoji: '🎁', screen: 'AddOffer', color: Colors.orangePrimary },
   { label: 'Edit Shop', emoji: '✏️', screen: 'CreateProfile', color: Colors.purplePrimary },
   { label: 'View Orders', emoji: '📋', screen: null, color: Colors.greenPrimary },
+  { label: 'Settings & Profile', emoji: '👤', screen: 'Profile', color: Colors.blueDeep },
 ];
 
 export default function RetailerDashboardScreen() {
@@ -93,11 +94,26 @@ export default function RetailerDashboardScreen() {
 
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar}><Text style={styles.avatarTxt}>🏪</Text></View>
-            <View>
-              <Text style={styles.shopName}>{shopName}</Text>
-              <Text style={styles.shopSub}>Retailer Dashboard</Text>
-            </View>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.avatar}
+            >
+              <Text style={styles.avatarTxt}>🏪</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              activeOpacity={0.7}
+              onPress={() => {
+                if (shopProfile?.id) {
+                  navigation.navigate('ShopDetails', { shopId: String(shopProfile.id), shopName: shopProfile.name });
+                } else {
+                  showToast('Shop profile not found');
+                }
+              }}
+            >
+              <Text style={styles.shopName}>{shopName} 👁️</Text>
+              <Text style={styles.shopSub}>Retailer Dashboard • View Shop</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.openToggle}>
             <Text style={styles.openLabel}>{isOpen ? '● Open' : '● Closed'}</Text>
@@ -129,11 +145,26 @@ export default function RetailerDashboardScreen() {
         {/* Quick Actions */}
         <SectionHeader title="Quick Actions" />
         <View style={styles.actionsGrid}>
-          {QUICK_ACTIONS.map(a => (
+          {QUICK_ACTIONS.map((a, idx) => (
             <TouchableOpacity
               key={a.label}
-              style={styles.actionCard}
-              onPress={() => a.screen ? (navigation as any).navigate(a.screen, a.screen === 'CreateProfile' ? { isEdit: true } : undefined) : showToast('Coming soon!')}
+              style={[
+                styles.actionCard,
+                idx === QUICK_ACTIONS.length - 1 && QUICK_ACTIONS.length % 2 !== 0 && { width: '100%' }
+              ]}
+              onPress={() => {
+                if (a.screen === 'ShopDetails') {
+                  if (shopProfile?.id) {
+                    navigation.navigate('ShopDetails', { shopId: String(shopProfile.id), shopName: shopProfile.name });
+                  } else {
+                    showToast('Shop profile not found');
+                  }
+                } else if (a.screen) {
+                  navigation.navigate(a.screen as any, a.screen === 'CreateProfile' ? { isEdit: true } : undefined);
+                } else {
+                  showToast('Coming soon!');
+                }
+              }}
               activeOpacity={0.8}
             >
               <View style={[styles.actionIcon, { backgroundColor: a.color + '15' }]}>
