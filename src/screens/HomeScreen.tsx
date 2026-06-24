@@ -12,6 +12,7 @@ import { Text, Badge } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAppSelector } from '../redux/hooks';
+import { useTranslation } from 'react-i18next';
 import BannerCarousel from '../components/BannerCarousel';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
@@ -49,6 +50,7 @@ function getGreeting(): string {
 }
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const user = useAppSelector((state: any) => state.profile.user || state.app.user);
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,8 +163,8 @@ export default function HomeScreen() {
           <View style={styles.searchWrap}>
             <View style={styles.searchBar}>
               <Text style={styles.searchIcon}>🔍</Text>
-              <Text style={styles.searchPlaceholder}>
-                {searchQuery || 'Search shops, workers, services...'}
+               <Text style={styles.searchPlaceholder}>
+                {searchQuery || t('common.search', 'Search...')}
               </Text>
               <TouchableOpacity onPress={() => voiceService.startListening()} style={styles.voiceBtnWrap}>
                 <Text style={{ fontSize: 18 }}>🎙️</Text>
@@ -173,7 +175,7 @@ export default function HomeScreen() {
 
         <View style={styles.body}>
           {/* Category Grid */}
-          <SectionHeader title="Explore GoOne" actionLabel="See All" onAction={() => {}} />
+          <SectionHeader title={t('dashboard.exploreCategories', 'Explore Categories')} actionLabel="See All" onAction={() => {}} />
           <View style={styles.catGrid}>
             {CATEGORIES.map(cat => (
               <TouchableOpacity
@@ -185,7 +187,7 @@ export default function HomeScreen() {
                 <View style={[styles.catIconWrap, { backgroundColor: cat.color + '15' }]}>
                   <Text style={styles.catEmoji}>{cat.emoji}</Text>
                 </View>
-                <Text style={styles.catName}>{cat.name}</Text>
+                <Text style={styles.catName}>{t(`dashboard.${cat.id}`, cat.name)}</Text>
               </TouchableOpacity>
             ))}
           </View>

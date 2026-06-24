@@ -19,7 +19,8 @@
     "search": "Search",
     "bookings": "Bookings",
     "notifications": "Alerts",
-    "profile": "Profile"
+    "profile": "Profile",
+    "map": "Map"
   },
   "dashboard": {
     "shops": "Shops",
@@ -29,6 +30,7 @@
     "jobs": "Jobs",
     "nearbyHelp": "Nearby Help",
     "offers": "Offers",
+    "market": "Market",
     "subtitle": "Connecting your community",
     "exploreCategories": "Explore Categories"
   }

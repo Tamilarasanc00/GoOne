@@ -3,6 +3,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
@@ -84,6 +85,8 @@ function NotificationTabIcon({ focused }: { focused: boolean }) {
 }
 
 export default function MainTabNavigator() {
+  const { t } = useTranslation();
+
   return (
     <>
     <Tab.Navigator
@@ -102,11 +105,21 @@ export default function MainTabNavigator() {
             </View>
           );
         },
-        tabBarLabel: ({ focused }) => (
-          <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
-            {TAB_LABELS[route.name]}
-          </Text>
-        ),
+        tabBarLabel: ({ focused }) => {
+          const labels: Record<string, string> = {
+            HomeTab: t('navigation.home', 'Home'),
+            SearchTab: t('navigation.search', 'Search'),
+            MapExploreTab: t('navigation.map', 'Map'),
+            BookingsTab: t('navigation.bookings', 'Bookings'),
+            NotificationsTab: t('navigation.notifications', 'Alerts'),
+            ProfileTab: t('navigation.profile', 'Profile'),
+          };
+          return (
+            <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
+              {labels[route.name]}
+            </Text>
+          );
+        },
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabItem,
       })}

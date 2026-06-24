@@ -19,7 +19,8 @@
     "search": "தேடல்",
     "bookings": "பதிவுகள்",
     "notifications": "அறிவிப்புகள்",
-    "profile": "சுயவிவரம்"
+    "profile": "சுயவிவரம்",
+    "map": "வரைபடம்"
   },
   "dashboard": {
     "shops": "கடைகள்",
@@ -29,6 +30,7 @@
     "jobs": "வேலைகள்",
     "nearbyHelp": "அருகிலுள்ள உதவி",
     "offers": "சலுகைகள்",
+    "market": "சந்தை",
     "subtitle": "உங்கள் சமூகத்தை இணைக்கிறது",
     "exploreCategories": "வகைகளை ஆராயுங்கள்"
   }

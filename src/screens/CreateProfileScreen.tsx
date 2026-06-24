@@ -8,6 +8,7 @@ import { completeProfile, setProfileCompleted, setProfileRole, checkProfileStatu
 import { setRole } from '../redux/slices/appSlice';
 import { storage, StorageKeys } from '../services/storage';
 import { showToast } from '../utils/toast';
+import Tts from 'react-native-tts';
 import Geolocation from '@react-native-community/geolocation';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
@@ -172,6 +173,31 @@ export default function CreateProfileScreen() {
         showToast('Profile saved!');
         if (isEdit) navigation.goBack();
         else {
+          // Announce welcome message on initial profile creation
+          const lang = storage.getString(StorageKeys.LANGUAGE) || 'ta';
+          const ttsCode = lang === 'ta' ? 'ta-IN' : 
+                          lang === 'hi' ? 'hi-IN' : 
+                          lang === 'te' ? 'te-IN' : 
+                          lang === 'kn' ? 'kn-IN' : 
+                          lang === 'ml' ? 'ml-IN' : 'en-US';
+          const welcomeText = lang === 'ta' ? 'கோ ஒன் செயலிக்கு உங்களை வரவேற்கிறோம். உங்கள் சுயவிவரம் வெற்றிகரமாக உருவாக்கப்பட்டது.' :
+                              lang === 'kn' ? 'ಗೋ ಒನ್ ಅಪ್ಲಿಕೇಶನ್‌ಗೆ ಸುಸ್ವಾಗತ. ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಯಶಸ್ವಿಯಾಗಿ ರಚಿಸಲಾಗಿದೆ.' :
+                              lang === 'te' ? 'గో వన్ యాప్‌కు స్వాగతం. మీ ప్రొఫైల్ విజయవంతంగా సృష్టించబడింది.' :
+                              lang === 'hi' ? 'गो वन ऐप में आपका स्वागत है। आपकी प्रोफ़ाइल सफलतापूर्वक बनाई गई है।' :
+                              lang === 'ml' ? 'ഗോ വൺ ആപ്പിലേക്ക് സ്വാഗതം. നിങ്ങളുടെ പ്രൊഫൈൽ വിജയകരമായി സൃഷ്ടിച്ചു.' :
+                              'Welcome to Go One. Your profile has been created successfully.';
+
+          Tts.stop();
+          Tts.setDefaultLanguage(ttsCode).then(() => {
+            Tts.setDefaultRate(0.5);
+            Tts.speak(welcomeText);
+          }).catch(() => {
+            Tts.setDefaultLanguage('en-US').then(() => {
+              Tts.setDefaultRate(0.5);
+              Tts.speak('Welcome to Go One. Your profile has been created successfully.');
+            });
+          });
+
           let nextScreen = 'MainTabs';
           if (safeRole.includes('retail')) nextScreen = 'RetailerDashboard';
           else if (safeRole.includes('farmer')) nextScreen = 'FarmerDashboard';
