@@ -1,36 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
-import { Text, Surface, useTheme, Avatar, Button, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar } from 'react-native';
+import { Text, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
+import { StatusChip } from '../components/GoOneUI';
 
 type TabStatus = 'Pending' | 'Accepted' | 'Completed' | 'Cancelled';
-
 const TABS: TabStatus[] = ['Pending', 'Accepted', 'Completed', 'Cancelled'];
 
 export default function BookingsScreen() {
-  const theme = useTheme();
   const [activeTab, setActiveTab] = useState<TabStatus>('Pending');
   const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchBookings = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      const response = await apiService.bookings.history();
-      // If backend returns bookings successfully, update state
-      if (response && response.bookings) {
-        setBookings(response.bookings);
-      }
-    } catch (error) {
-      console.warn('Error loading bookings, using static fallback data for preview:', error);
-      // Fallback mocks if database table is empty/unconfigured
+      const res = await apiService.bookings.history();
+      if (res?.bookings) setBookings(res.bookings);
+    } catch {
       setBookings([
-        { id: 1, status: 'Pending', providerName: 'Suresh (Plumber)', date: '30 May 2026', time: '02:00 PM', price: '₹200', image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80', service: 'Pipe Repair' },
-        { id: 2, status: 'Accepted', providerName: 'Muthu Kumar (Electrician)', date: '30 May 2026', time: '04:30 PM', price: '₹300', image: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80', service: 'Wiring Issue' },
+        { id: 1, status: 'Pending', providerName: 'Suresh (Plumber)', date: '30 May 2026', time: '02:00 PM', price: '₹200', service: 'Pipe Repair' },
+        { id: 2, status: 'Accepted', providerName: 'Muthu Kumar (Electrician)', date: '30 May 2026', time: '04:30 PM', price: '₹300', service: 'Wiring Issue' },
+        { id: 3, status: 'Completed', providerName: 'Ravi (Tractor)', date: '28 May 2026', time: '09:00 AM', price: '₹1200', service: 'Ploughing' },
       ]);
     } finally {
       setLoading(false);
@@ -38,143 +34,108 @@ export default function BookingsScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  useEffect(() => { fetchBookings(); }, []);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchBookings(false);
-    showToast('Booking history updated');
-  };
+  const onRefresh = () => { setRefreshing(true); fetchBookings(false); };
 
-  const handleAction = async (id: number, actionType: 'accept' | 'reject' | 'complete') => {
+  const handleAction = async (id: number, action: 'accept' | 'reject' | 'complete') => {
     try {
-      if (actionType === 'accept') {
-        showToast('Accepting booking...');
-        await apiService.bookings.accept(id);
-        showToast('Booking accepted successfully');
-      } else if (actionType === 'reject') {
-        showToast('Cancelling booking...');
-        await apiService.bookings.reject(id);
-        showToast('Booking cancelled successfully');
-      } else if (actionType === 'complete') {
-        showToast('Completing booking...');
-        await apiService.bookings.complete(id);
-        showToast('Booking completed successfully');
-      }
-      fetchBookings(false); // Reload list
-    } catch (error: any) {
-      showToast(error.message || 'Operation failed.');
-    }
+      if (action === 'accept') await apiService.bookings.accept(id);
+      else if (action === 'reject') await apiService.bookings.reject(id);
+      else if (action === 'complete') await apiService.bookings.complete(id);
+      showToast(`Booking ${action}ed`);
+      fetchBookings(false);
+    } catch (err: any) { showToast(err.message || 'Action failed'); }
   };
 
-  const filteredBookings = bookings.filter(booking => booking.status === activeTab);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pending': return '#FF9800';
-      case 'Accepted': return '#2196F3';
-      case 'Completed': return '#4CAF50';
-      case 'Cancelled': return '#F44336';
-      default: return '#757575';
-    }
-  };
-
-  const renderBookingCard = ({ item }: { item: any }) => (
-    <Surface style={[styles.bookingCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
-      <View style={styles.cardHeader}>
-        <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>{item.service || 'Marketplace Item'}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
-        </View>
-      </View>
-
-      <View style={styles.cardBody}>
-        {item.image ? (
-          <Avatar.Image size={50} source={{ uri: item.image }} style={styles.providerImage} />
-        ) : (
-          <Avatar.Icon size={50} icon="account" />
-        )}
-        <View style={styles.providerInfo}>
-          <Text variant="titleMedium" style={styles.providerName}>{item.providerName || 'Local Business'}</Text>
-          <View style={styles.dateTimeRow}>
-            <MaterialCommunityIcons name="calendar-blank" size={14} color={theme.colors.onSurfaceVariant} />
-            <Text variant="bodySmall" style={[styles.dateTimeText, { color: theme.colors.onSurfaceVariant }]}>
-              {item.date || new Date(item.booking_date || Date.now()).toLocaleDateString()} • {item.time || 'All Day'}
-            </Text>
-          </View>
-        </View>
-        <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
-          {item.price || `₹${item.total_amount || '0'}`}
-        </Text>
-      </View>
-
-      {/* Action Buttons based on Status */}
-      {item.status === 'Pending' && (
-        <View style={styles.cardActions}>
-          <Button mode="outlined" onPress={() => handleAction(item.id, 'reject')} style={styles.actionButton} textColor="#D32F2F">Cancel Request</Button>
-        </View>
-      )}
-      
-      {item.status === 'Accepted' && (
-        <View style={styles.cardActions}>
-          <Button mode="outlined" icon="phone" onPress={() => {}} style={styles.actionButton}>Call Partner</Button>
-          <Button mode="contained" onPress={() => handleAction(item.id, 'complete')} style={[styles.actionButton, { marginLeft: 12 }]}>Mark Completed</Button>
-        </View>
-      )}
-    </Surface>
-  );
+  const filteredBookings = bookings.filter(b => b.status === activeTab);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+
       {/* Header */}
       <View style={styles.header}>
-        <Text variant="headlineMedium" style={styles.headerTitle}>My Bookings</Text>
+        <Text style={styles.headerTitle}>My Bookings</Text>
       </View>
 
-      {/* Custom Tabs */}
+      {/* Tabs */}
       <View style={styles.tabsContainer}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tabButton, activeTab === tab && { borderBottomColor: theme.colors.primary, borderBottomWidth: 2 }]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text 
-              variant="titleSmall" 
-              style={[
-                styles.tabText, 
-                { color: activeTab === tab ? theme.colors.primary : theme.colors.onSurfaceVariant }
-              ]}
-            >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {TABS.map(tab => {
+          const isActive = activeTab === tab;
+          return (
+            <TouchableOpacity key={tab} style={[styles.tabBtn, isActive && styles.tabBtnActive]} onPress={() => setActiveTab(tab)}>
+              <Text style={[styles.tabTxt, isActive && styles.tabTxtActive]}>{tab}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {/* Bookings List */}
+      {/* List */}
       {loading && !refreshing ? (
-        <ActivityIndicator style={{ marginTop: 64 }} />
+        <View style={styles.loaderWrap}><ActivityIndicator size="large" color={Colors.bluePrimary} /></View>
       ) : (
         <FlatList
           data={filteredBookings}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderBookingCard}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-          }
+          keyExtractor={item => String(item.id)}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.bluePrimary]} />}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="calendar-search" size={64} color={theme.colors.onSurfaceVariant} />
-              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
-                No {activeTab.toLowerCase()} bookings found
-              </Text>
+            <View style={styles.emptyWrap}>
+              <Text style={{ fontSize: 64 }}>📅</Text>
+              <Text style={styles.emptyTxt}>No {activeTab.toLowerCase()} bookings</Text>
             </View>
           }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.serviceIconWrap}>
+                  <Text style={{ fontSize: 24 }}>{item.service?.includes('Pipe') ? '🔧' : item.service?.includes('Wiring') ? '⚡' : '🚜'}</Text>
+                </View>
+                <View style={styles.cardHeaderTxt}>
+                  <Text style={styles.serviceName}>{item.service || 'Service'}</Text>
+                  <Text style={styles.providerName}>{item.providerName}</Text>
+                </View>
+                <StatusChip
+                  label={item.status}
+                  type={item.status === 'Pending' ? 'orange' : item.status === 'Accepted' ? 'blue' : item.status === 'Completed' ? 'green' : 'red'}
+                />
+              </View>
+
+              <View style={styles.cardBody}>
+                <View style={styles.detailItem}>
+                  <Text style={{ fontSize: 16 }}>📅</Text>
+                  <Text style={styles.detailTxt}>{item.date}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={{ fontSize: 16 }}>⏰</Text>
+                  <Text style={styles.detailTxt}>{item.time}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={{ fontSize: 16 }}>💰</Text>
+                  <Text style={styles.detailTxtBold}>{item.price}</Text>
+                </View>
+              </View>
+
+              {item.status === 'Pending' && (
+                <View style={styles.cardActions}>
+                  <TouchableOpacity style={styles.rejectBtn} onPress={() => handleAction(item.id, 'reject')}>
+                    <Text style={styles.rejectTxt}>Cancel Request</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {item.status === 'Accepted' && (
+                <View style={styles.cardActions}>
+                  <TouchableOpacity style={styles.callBtn} onPress={() => showToast('Calling...')}>
+                    <Text style={styles.callTxt}>📞 Call</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.completeBtn} onPress={() => handleAction(item.id, 'complete')}>
+                    <Text style={styles.completeTxt}>✓ Complete</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
         />
       )}
     </SafeAreaView>
@@ -182,94 +143,51 @@ export default function BookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safe: { flex: 1, backgroundColor: Colors.bgLight },
   header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFF',
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
+    backgroundColor: Colors.white,
   },
-  headerTitle: {
-    fontWeight: 'bold',
-  },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: Colors.textPrimary },
+  
   tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    flexDirection: 'row', backgroundColor: Colors.white,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
+  tabBtn: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  tabBtnActive: { borderBottomWidth: 3, borderBottomColor: Colors.bluePrimary },
+  tabTxt: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
+  tabTxtActive: { color: Colors.bluePrimary, fontWeight: '900' },
+
+  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  
+  list: { padding: Spacing.md, paddingBottom: Spacing.xl },
+  emptyWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 12 },
+  emptyTxt: { fontSize: 16, fontWeight: '700', color: Colors.textMuted },
+
+  card: {
+    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.md,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, elevation: 2,
   },
-  tabText: {
-    fontWeight: 'bold',
-  },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 24,
-  },
-  bookingCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-  },
-  statusText: {
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md },
+  serviceIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.bgLight, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  cardHeaderTxt: { flex: 1 },
+  serviceName: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  providerName: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  
   cardBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+    flexDirection: 'row', justifyContent: 'space-between', backgroundColor: Colors.bgLight,
+    borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.md,
   },
-  providerImage: {
-    backgroundColor: '#E0E0E0',
-  },
-  providerInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  providerName: {
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  dateTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dateTimeText: {
-    marginLeft: 4,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 8,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 64,
-  },
+  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailTxt: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  detailTxtBold: { fontSize: 14, fontWeight: '800', color: Colors.greenPrimary },
+
+  cardActions: { flexDirection: 'row', gap: 10 },
+  rejectBtn: { flex: 1, borderRadius: Radius.full, paddingVertical: 10, borderWidth: 1.5, borderColor: Colors.redSoft, alignItems: 'center' },
+  rejectTxt: { fontSize: 13, fontWeight: '700', color: Colors.redPrimary },
+  callBtn: { flex: 1, borderRadius: Radius.full, paddingVertical: 10, backgroundColor: Colors.greenSoft, alignItems: 'center' },
+  callTxt: { fontSize: 13, fontWeight: '700', color: Colors.greenPrimary },
+  completeBtn: { flex: 1, borderRadius: Radius.full, paddingVertical: 10, backgroundColor: Colors.bluePrimary, alignItems: 'center' },
+  completeTxt: { fontSize: 13, fontWeight: '700', color: Colors.white },
 });

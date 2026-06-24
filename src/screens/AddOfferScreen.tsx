@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, useTheme, Surface, IconButton, HelperText } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -8,6 +8,8 @@ import { useNavigation } from '@react-navigation/native';
 import { apiService } from '../services/apiService';
 import { useAppSelector } from '../redux/hooks';
 import { showToast } from '../utils/toast';
+import { launchCamera, launchImageLibrary, MediaType } from 'react-native-image-picker';
+import { BASE_URL } from '../config/apiConfig';
 
 type FormData = {
   title: string;
@@ -59,27 +61,33 @@ export default function AddOfferScreen() {
     }
   };
 
-  const handleSimulateUpload = (type: 'camera' | 'gallery') => {
-    setUploading(true);
-    setUploadProgress(0);
-    showToast(type === 'camera' ? 'Opening Camera...' : 'Opening Gallery...');
-
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 25;
-      setUploadProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          const mockUrl = type === 'camera'
-            ? 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=400&q=80'
-            : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80';
-          setImageUri(mockUrl);
+  const handleUpload = (type: 'camera' | 'gallery') => {
+    const options = { mediaType: 'photo' as MediaType, quality: 0.8 };
+    const callback = async (response: any) => {
+      if (response.didCancel) return;
+      if (response.errorMessage) return showToast('Image picker error: ' + response.errorMessage);
+      if (response.assets && response.assets.length > 0) {
+        const asset = response.assets[0];
+        setUploading(true);
+        try {
+          const res = await apiService.upload.image(asset.uri, asset.type, asset.fileName);
+          if (res.success) {
+            setImageUri(BASE_URL + res.url);
+            showToast('Offer flyer uploaded!');
+          }
+        } catch (e) {
+          showToast('Failed to upload flyer');
+        } finally {
           setUploading(false);
-          showToast('Offer flyer uploaded!');
-        }, 200);
+        }
       }
-    }, 100);
+    };
+
+    if (type === 'camera') {
+      launchCamera(options, callback);
+    } else {
+      launchImageLibrary(options, callback);
+    }
   };
 
   return (
@@ -90,7 +98,8 @@ export default function AddOfferScreen() {
         <Text variant="titleLarge" style={styles.headerTitle}>Add New Offer</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         
         {/* Flyer Image Section */}
         <Text variant="titleMedium" style={styles.sectionTitle}>Offer Flyer / Photo</Text>
@@ -98,7 +107,7 @@ export default function AddOfferScreen() {
           {uploading ? (
               <View style={styles.loaderContainer}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Uploading: {uploadProgress}%</Text>
+                <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Uploading flyer...</Text>
               </View>
           ) : imageUri ? (
             <View style={styles.previewContainer}>
@@ -113,7 +122,7 @@ export default function AddOfferScreen() {
             </View>
           ) : (
             <View style={styles.uploadButtonsContainer}>
-              <TouchableOpacity style={styles.uploadButton} onPress={() => handleSimulateUpload('camera')}>
+              <TouchableOpacity style={styles.uploadButton} onPress={() => handleUpload('camera')}>
                 <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '15' }]}>
                   <MaterialCommunityIcons name="camera" size={32} color={theme.colors.primary} />
                 </View>
@@ -122,7 +131,7 @@ export default function AddOfferScreen() {
               
               <View style={styles.divider} />
               
-              <TouchableOpacity style={styles.uploadButton} onPress={() => handleSimulateUpload('gallery')}>
+              <TouchableOpacity style={styles.uploadButton} onPress={() => handleUpload('gallery')}>
                 <View style={[styles.iconCircle, { backgroundColor: theme.colors.secondary + '15' }]}>
                   <MaterialCommunityIcons name="image-multiple" size={32} color={theme.colors.secondary} />
                 </View>
@@ -209,6 +218,7 @@ export default function AddOfferScreen() {
         </Button>
         
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

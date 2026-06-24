@@ -6,9 +6,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
-import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
 import { StorageKeys, saveJSON, loadJSON } from '../services/storage';
+import { voiceService } from '../services/voiceService';
 
 type RetailShopListingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RetailShopListing'>;
 
@@ -143,6 +143,13 @@ export default function RetailShopListingScreen() {
           style={styles.backButton}
         />
         <Text variant="titleLarge" style={styles.headerTitle}>Nearby Shops</Text>
+        <View style={{ flex: 1 }} />
+        <IconButton
+          icon="microphone"
+          size={24}
+          onPress={() => voiceService.startListening()}
+          iconColor={theme.colors.primary}
+        />
       </View>
 
       {/* Search */}

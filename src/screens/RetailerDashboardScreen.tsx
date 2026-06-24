@@ -1,430 +1,350 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, FlatList, ActivityIndicator, Image } from 'react-native';
-import { Text, Surface, useTheme, Avatar, IconButton, Button, Divider } from 'react-native-paper';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Image,
+  Switch,
+  StatusBar,
+} from 'react-native';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAppSelector } from '../redux/hooks';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
+import { SectionHeader, StatusChip } from '../components/GoOneUI';
 
 type RetailerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-const PRIMARY_COLOR = '#0066FF';
+
+const QUICK_ACTIONS = [
+  { label: 'Add Product', emoji: '📦', screen: 'AddProduct', color: Colors.bluePrimary },
+  { label: 'Add Offer', emoji: '🎁', screen: 'AddOffer', color: Colors.orangePrimary },
+  { label: 'Edit Shop', emoji: '✏️', screen: 'CreateProfile', color: Colors.purplePrimary },
+  { label: 'View Orders', emoji: '📋', screen: null, color: Colors.greenPrimary },
+];
 
 export default function RetailerDashboardScreen() {
-  const theme = useTheme();
   const navigation = useNavigation<RetailerDashboardNavigationProp>();
-
-  // Fetch shop details from Redux
-  const shopProfile = useAppSelector((state) => state.profile.profile);
-  const user = useAppSelector((state) => state.profile.user);
+  const shopProfile = useAppSelector((state: any) => state.profile.profile);
+  const user = useAppSelector((state: any) => state.profile.user);
 
   const [products, setProducts] = useState<any[]>([]);
+  const [offers, setOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
-  const loadProducts = async () => {
-    if (!shopProfile?.id) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(false);
+  const loadData = async () => {
+    if (!shopProfile?.id) { setLoading(false); return; }
+    setLoading(true); setError(false);
     try {
-      const res = await apiService.products.list(shopProfile.id);
-      if (res && res.success) {
-        setProducts(res.products || []);
-      } else {
-        setError(true);
+      const [productsRes, offersRes] = await Promise.all([
+        apiService.products.list(shopProfile.id),
+        apiService.shops.getOffers()
+      ]);
+      
+      if (productsRes?.success) setProducts(productsRes.products || []);
+      else setError(true);
+      
+      if (offersRes?.success) {
+        // Filter offers for this shop
+        const shopOffers = (offersRes.offers || []).filter((o: any) => o.shop_name === (shopProfile.name || 'My Shop'));
+        setOffers(shopOffers);
       }
-    } catch (err) {
-      console.warn('Failed to load shop products:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError(true); }
+    finally { setLoading(false); }
   };
 
-  // Reload products list when screen gains focus
-  useFocusEffect(
-    useCallback(() => {
-      loadProducts();
-    }, [shopProfile])
-  );
+  useFocusEffect(useCallback(() => { loadData(); }, [shopProfile]));
 
-  const handleDeleteProduct = (productId: number, productName: string) => {
-    Alert.alert(
-      'Delete Product',
-      `Are you sure you want to delete "${productName}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            showToast('Deleting product...');
-            try {
-              const res = await apiService.products.delete(productId);
-              if (res && res.success) {
-                showToast('Product deleted successfully');
-                loadProducts(); // reload
-              } else {
-                showToast('Failed to delete product');
-              }
-            } catch (err: any) {
-              showToast(err.message || 'Error deleting product');
-            }
-          }
+  const handleDelete = (id: number, name: string) => {
+    Alert.alert('Delete Product', `Delete "${name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await apiService.products.delete(id);
+            if (res?.success) { showToast('Deleted'); loadData(); }
+          } catch (err: any) { showToast(err.message || 'Error'); }
         }
-      ]
-    );
+      }
+    ]);
   };
 
-  const renderStatCard = (title: string, value: string, icon: string, color: string) => (
-    <Surface style={styles.statCard} elevation={1}>
-      <View style={[styles.statIconContainer, { backgroundColor: color + '20' }]}>
-        <MaterialCommunityIcons name={icon} size={28} color={color} />
-      </View>
-      <Text variant="headlineSmall" style={styles.statValue}>{value}</Text>
-      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>{title}</Text>
-    </Surface>
-  );
-
-  const renderActionCard = (title: string, icon: string, color: string, onPress: () => void) => (
-    <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={styles.actionCardWrapper}>
-      <Surface style={styles.actionCard} elevation={2}>
-        <MaterialCommunityIcons name={icon} size={32} color={color} style={{ marginBottom: 8 }} />
-        <Text variant="titleMedium" style={{ fontWeight: 'bold', textAlign: 'center' }}>{title}</Text>
-      </Surface>
-    </TouchableOpacity>
-  );
+  const shopName = shopProfile?.name || user?.name || 'My Shop';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.bluePrimary} />
+
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerProfile}>
-          <Avatar.Image 
-            size={48} 
-            source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&w=400&q=80' }} 
-          />
-          <View style={styles.headerTextContainer}>
-            <Text variant="titleMedium" style={styles.shopName}>
-              {shopProfile?.name || 'Sri Murugan Stores'}
-            </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Retailer Dashboard</Text>
-          </View>
-        </View>
-        <IconButton
-          icon="logout"
-          iconColor="#D32F2F"
-          size={24}
-          onPress={() => {
-            Alert.alert('Logout', 'Log out of dashboard?', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Logout',
-                style: 'destructive',
-                onPress: () => {
-                  navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-                  showToast('Logged out');
-                }
-              }
-            ]);
-          }}
-        />
-      </View>
+        <View style={[styles.circle, { width: 200, height: 200, top: -60, right: -60 }]} />
+        <View style={[styles.circle, { width: 120, height: 120, bottom: -20, left: 40 }]} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        {/* Statistics Grid */}
-        <View style={styles.sectionHeader}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>Overview</Text>
-          <Text variant="bodyMedium" style={{ color: PRIMARY_COLOR, fontWeight: 'bold' }}>Live Stats</Text>
-        </View>
-        
-        <View style={styles.statsGrid}>
-          {renderStatCard('Total Products', String(products.length), 'package-variant-closed', '#2196F3')}
-          {renderStatCard("Today's Views", '45', 'eye-outline', '#9C27B0')}
-          {renderStatCard('Orders', '12', 'shopping-outline', '#4CAF50')}
-          {renderStatCard('Earnings', '₹4,500', 'currency-inr', '#FF9800')}
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.sectionHeader}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>Quick Actions</Text>
-        </View>
-
-        <View style={styles.actionsGrid}>
-          {renderActionCard('Add Product', 'plus-box-outline', '#2196F3', () => navigation.navigate('AddProduct'))}
-          {renderActionCard('Add Offer', 'brightness-percent', '#FF9800', () => navigation.navigate('AddOffer'))}
-          {renderActionCard('Edit Shop', 'store-edit-outline', '#9C27B0', () => {
-            navigation.navigate('CreateProfile', { isEdit: true });
-          })}
-          {renderActionCard('View Orders', 'clipboard-list-outline', '#4CAF50', () => {
-            showToast('Loading orders logs...');
-          })}
-        </View>
-
-        {/* Product listings */}
-        <View style={styles.sectionHeader}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>My Shop Listings</Text>
-          <Text variant="bodyMedium" style={{ color: PRIMARY_COLOR, fontWeight: 'bold' }}>{products.length} Items</Text>
-        </View>
-
-        {loading ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-            <Text style={{ marginTop: 8 }}>Loading shop listings...</Text>
-          </View>
-        ) : error ? (
-          <Surface style={styles.errorContainer} elevation={0}>
-            <Text style={{ color: '#D32F2F', fontWeight: 'bold' }}>Failed to retrieve product listings.</Text>
-            <Button mode="text" onPress={loadProducts}>Retry</Button>
-          </Surface>
-        ) : products.length === 0 ? (
-          <Surface style={styles.emptyContainer} elevation={0}>
-            <MaterialCommunityIcons name="package-variant" size={48} color="#9E9E9E" />
-            <Text style={styles.emptyText}>No products added to your shop yet.</Text>
-            <Button mode="contained" onPress={() => navigation.navigate('AddProduct')} style={{ marginTop: 12 }}>
-              Add Your First Product
-            </Button>
-          </Surface>
-        ) : (
-          <View>
-            {products.map((item) => (
-              <Surface key={item.id} style={styles.productItemCard} elevation={1}>
-                <Image 
-                  source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=400&q=80' }} 
-                  style={styles.productImg} 
-                />
-                <View style={styles.productDetailsContainer}>
-                  <Text variant="titleMedium" style={styles.productName}>{item.name}</Text>
-                  <Text variant="bodySmall" style={styles.productCategory}>{item.category || 'General'}</Text>
-                  <Text variant="titleMedium" style={styles.productPrice}>₹{parseFloat(item.price).toFixed(0)}</Text>
-                  <Text variant="bodySmall" style={styles.productQty}>Stock level: {item.stock_quantity || 10}</Text>
-                </View>
-                <View style={styles.productActionsRow}>
-                  <IconButton 
-                    icon="pencil-outline" 
-                    iconColor={PRIMARY_COLOR} 
-                    size={22} 
-                    onPress={() => navigation.navigate('AddProduct', { productId: item.id.toString() })} 
-                  />
-                  <IconButton 
-                    icon="trash-can-outline" 
-                    iconColor="#D32F2F" 
-                    size={22} 
-                    onPress={() => handleDeleteProduct(item.id, item.name)} 
-                  />
-                </View>
-              </Surface>
-            ))}
-          </View>
-        )}
-
-        {/* Recent Orders Preview */}
-        <View style={styles.sectionHeader}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>Recent Orders</Text>
-        </View>
-
-        <Surface style={styles.recentOrderCard} elevation={1}>
-          <View style={styles.orderHeader}>
-            <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>Order #1024</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>Pending</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatar}><Text style={styles.avatarTxt}>🏪</Text></View>
+            <View>
+              <Text style={styles.shopName}>{shopName}</Text>
+              <Text style={styles.shopSub}>Retailer Dashboard</Text>
             </View>
           </View>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>
-            2x Ponni Rice (25kg), 1x Sunflower Oil (5L)
-          </Text>
-          <View style={styles.orderFooter}>
-            <Text variant="titleMedium" style={{ color: '#4CAF50', fontWeight: 'bold' }}>₹3,200</Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>10 mins ago</Text>
+          <View style={styles.openToggle}>
+            <Text style={styles.openLabel}>{isOpen ? '● Open' : '● Closed'}</Text>
+            <Switch
+              value={isOpen}
+              onValueChange={v => { setIsOpen(v); showToast(v ? 'Shop is Open' : 'Shop is Closed'); }}
+              thumbColor={Colors.white}
+              trackColor={{ false: Colors.border, true: Colors.greenPrimary }}
+            />
           </View>
-        </Surface>
+        </View>
 
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {[
+            { v: String(products.length), l: 'Products' },
+            { v: '₹4.5K', l: 'Earnings' },
+            { v: '12', l: 'Orders' },
+          ].map(s => (
+            <View key={s.l} style={styles.statItem}>
+              <Text style={styles.statVal}>{s.v}</Text>
+              <Text style={styles.statLbl}>{s.l}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Quick Actions */}
+        <SectionHeader title="Quick Actions" />
+        <View style={styles.actionsGrid}>
+          {QUICK_ACTIONS.map(a => (
+            <TouchableOpacity
+              key={a.label}
+              style={styles.actionCard}
+              onPress={() => a.screen ? (navigation as any).navigate(a.screen, a.screen === 'CreateProfile' ? { isEdit: true } : undefined) : showToast('Coming soon!')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: a.color + '15' }]}>
+                <Text style={{ fontSize: 28 }}>{a.emoji}</Text>
+              </View>
+              <Text style={styles.actionLabel}>{a.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Products */}
+        <SectionHeader
+          title="🛒 My Products"
+          actionLabel={`+ Add`}
+          onAction={() => navigation.navigate('AddProduct')}
+        />
+
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color={Colors.bluePrimary} />
+          </View>
+        ) : error ? (
+          <TouchableOpacity style={styles.errorCard} onPress={loadData}>
+            <Text style={styles.errorTxt}>⚠️ Failed to load. Tap to retry.</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            {products.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={{ fontSize: 40 }}>📦</Text>
+                <Text style={styles.emptyTxt}>No products yet</Text>
+                <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('AddProduct')}>
+                  <Text style={styles.addBtnTxt}>+ Add Your First Product</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              products.map(item => (
+                <View key={item.id} style={styles.productCard}>
+                  <Image
+                    source={{ uri: item.image_url || 'https://via.placeholder.com/70' }}
+                    style={styles.productImg}
+                  />
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>{item.name}</Text>
+                    <Text style={styles.productCat}>{item.category || 'General'}</Text>
+                    <Text style={styles.productPrice}>₹{parseFloat(item.price).toFixed(0)}</Text>
+                    <StatusChip label={`Stock: ${item.stock_quantity || 10}`} type="blue" />
+                  </View>
+                  <View style={styles.productActions}>
+                    <TouchableOpacity onPress={() => navigation.navigate('AddProduct', { productId: item.id.toString() })}>
+                      <Text style={{ fontSize: 20 }}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDelete(item.id, item.name)}>
+                      <Text style={{ fontSize: 20 }}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+
+            {/* Offers */}
+            <SectionHeader
+              title="🎁 My Offers"
+              actionLabel={`+ Add`}
+              onAction={() => navigation.navigate('AddOffer')}
+            />
+            {offers.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={{ fontSize: 40 }}>🎁</Text>
+                <Text style={styles.emptyTxt}>No active offers</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('AddOffer')} style={[styles.addBtn, {backgroundColor: Colors.orangePrimary}]}>
+                  <Text style={styles.addBtnTxt}>+ Post an Offer</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              offers.map(offer => (
+                <View key={offer.id} style={styles.productCard}>
+                  <Image
+                    source={{ uri: offer.image_url || 'https://via.placeholder.com/70' }}
+                    style={styles.productImg}
+                  />
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>{offer.title}</Text>
+                    <Text style={styles.productCat}>{offer.description}</Text>
+                    <StatusChip label={offer.discount} type="orange" />
+                  </View>
+                  <View style={styles.productActions}>
+                    {/* Offers delete functionality could be added here later */}
+                  </View>
+                </View>
+              ))
+            )}
+          </>
+        )}
+
+        {/* Recent Orders */}
+        <SectionHeader title="📋 Recent Orders" />
+        {[
+          { id: '#1024', items: '2x Ponni Rice, 1x Sunflower Oil', amount: '₹3,200', time: '10 mins ago', status: 'Pending' },
+          { id: '#1023', items: '1x Dal, 2x Sugar', amount: '₹980', time: '1 hr ago', status: 'Done' },
+        ].map(order => (
+          <View key={order.id} style={styles.orderCard}>
+            <View style={styles.orderHeader}>
+              <Text style={styles.orderId}>Order {order.id}</Text>
+              <StatusChip label={order.status} type={order.status === 'Done' ? 'green' : 'orange'} />
+            </View>
+            <Text style={styles.orderItems}>{order.items}</Text>
+            <View style={styles.orderFooter}>
+              <Text style={styles.orderAmount}>{order.amount}</Text>
+              <Text style={styles.orderTime}>{order.time}</Text>
+            </View>
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safe: { flex: 1, backgroundColor: Colors.bgLight },
+
   header: {
+    backgroundColor: Colors.bluePrimary,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  circle: {
+    position: 'absolute', borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: {
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarTxt: { fontSize: 24 },
+  shopName: { fontSize: 16, fontWeight: '800', color: Colors.white },
+  shopSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  openToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 1 },
+  openLabel: { fontSize: 11, fontWeight: '700', color: Colors.white },
+
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    justifyContent: 'space-around',
+    zIndex: 1,
   },
-  headerProfile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTextContainer: {
-    marginLeft: 12,
-  },
-  shopName: {
-    fontWeight: 'bold',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontWeight: 'bold',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  statValue: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  actionCardWrapper: {
-    width: '48%',
-    marginBottom: 16,
-  },
+  statItem: { alignItems: 'center' },
+  statVal: { fontSize: 20, fontWeight: '900', color: Colors.white },
+  statLbl: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
+  scroll: { padding: Spacing.md, paddingTop: Spacing.lg },
+
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: Spacing.lg },
   actionCard: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 16,
+    width: '47%',
+    backgroundColor: Colors.white,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 110,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  recentOrderCard: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  actionIcon: {
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: 8,
   },
-  statusBadge: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+  actionLabel: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+
+  loader: { paddingVertical: 32, alignItems: 'center' },
+  errorCard: { padding: Spacing.md, backgroundColor: Colors.redSoft, borderRadius: Radius.md, marginBottom: Spacing.md },
+  errorTxt: { color: Colors.redPrimary, fontWeight: '600', fontSize: 13 },
+  emptyCard: {
+    padding: Spacing.xl, backgroundColor: Colors.white, borderRadius: Radius.lg,
+    alignItems: 'center', marginBottom: Spacing.md,
   },
-  statusText: {
-    color: '#FF9800',
-    fontWeight: 'bold',
-    fontSize: 12,
+  emptyTxt: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginTop: 8, marginBottom: 12 },
+  addBtn: { backgroundColor: Colors.bluePrimary, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 10 },
+  addBtnTxt: { color: Colors.white, fontWeight: '700', fontSize: 13 },
+
+  productCard: {
+    flexDirection: 'row', backgroundColor: Colors.white, borderRadius: Radius.lg,
+    padding: Spacing.md, marginBottom: 10, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  orderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
+  productImg: { width: 64, height: 64, borderRadius: Radius.md, backgroundColor: Colors.bgLight },
+  productInfo: { flex: 1, marginLeft: 12, gap: 4 },
+  productName: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  productCat: { fontSize: 11, color: Colors.textMuted },
+  productPrice: { fontSize: 15, fontWeight: '800', color: Colors.greenPrimary },
+  productActions: { gap: 8 },
+
+  orderCard: {
+    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  
-  // Product item card styles
-  productItemCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  productImg: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
-  },
-  productDetailsContainer: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  productName: {
-    fontWeight: 'bold',
-  },
-  productCategory: {
-    color: '#757575',
-    fontSize: 12,
-  },
-  productPrice: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  productQty: {
-    fontSize: 11,
-    color: '#9E9E9E',
-  },
-  productActionsRow: {
-    flexDirection: 'row',
-    alignSelf: 'center',
-  },
-  loaderContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 24,
-  },
-  errorContainer: {
-    backgroundColor: '#FFEBEE',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyContainer: {
-    backgroundColor: '#F5F5F5',
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyText: {
-    color: '#757575',
-    marginTop: 8,
-    fontWeight: '500',
-  },
+  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  orderId: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary },
+  orderItems: { fontSize: 12, color: Colors.textMuted, marginBottom: 8 },
+  orderFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  orderAmount: { fontSize: 15, fontWeight: '800', color: Colors.greenPrimary },
+  orderTime: { fontSize: 11, color: Colors.textMuted },
 });

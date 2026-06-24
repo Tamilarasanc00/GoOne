@@ -1,21 +1,37 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Text, TextInput, Button, useTheme, Surface, IconButton } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  View,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  StatusBar,
+} from 'react-native';
+import { Text, TextInput } from 'react-native-paper';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { apiService } from '../services/apiService';
-import { Alert } from 'react-native';
 import { showToast } from '../utils/toast';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
+import { GoOneButton, VoiceButton } from '../components/GoOneUI';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
 
-const LoginScreen = () => {
-  const theme = useTheme();
+const ROLE_ICONS = [
+  { icon: '🏪', label: 'Shops' },
+  { icon: '🌾', label: 'Farmers' },
+  { icon: '🔧', label: 'Services' },
+  { icon: '👷', label: 'Workers' },
+];
+
+export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const [mobileNumber, setMobileNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+91');
+  const [countryCode] = useState('+91');
   const [loading, setLoading] = useState(false);
 
   const handleSendOTP = async () => {
@@ -29,9 +45,9 @@ const LoginScreen = () => {
       const fullMobile = countryCode + mobileNumber;
       const res = await apiService.auth.sendOtp(fullMobile);
       showToast(res.message || 'OTP Sent!');
-      navigation.navigate('OtpVerification', { 
-        mobileNumber: fullMobile, 
-        mockOtp: res.mock_otp 
+      navigation.navigate('OtpVerification', {
+        mobileNumber: fullMobile,
+        mockOtp: res.mock_otp,
       });
     } catch (err: any) {
       showToast(err.message || 'Failed to send OTP');
@@ -45,177 +61,220 @@ const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView contentContainerStyle={styles.container} bounces={false}>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar barStyle="light-content" backgroundColor={Colors.bluePrimary} />
+      <ScrollView contentContainerStyle={styles.container} bounces={false} keyboardShouldPersistTaps="handled">
 
-          {/* Header Illustration / Logo */}
-          <View style={styles.illustrationContainer}>
-            <Image
-              source={require('../assets/images/logo.png.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
+        {/* Hero Header */}
+        <View style={styles.hero}>
+          {/* Background circles */}
+          <View style={[styles.circle, { width: 220, height: 220, top: -70, right: -70 }]} />
+          <View style={[styles.circle, { width: 140, height: 140, bottom: -20, left: -30 }]} />
+
+          <View style={styles.heroContent}>
+            <View style={styles.logoWrap}>
+              <Image
+                source={require('../assets/images/logo.png.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.heroTitle}>👋 Welcome to GoOne</Text>
+            <Text style={styles.heroSub}>Login with your mobile number to get started</Text>
+            {/* Role icon pills */}
+            <View style={styles.roleRow}>
+              {ROLE_ICONS.map(r => (
+                <View key={r.label} style={styles.rolePill}>
+                  <Text style={styles.roleEmoji}>{r.icon}</Text>
+                  <Text style={styles.roleLabel}>{r.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Form */}
+        <View style={styles.formWrap}>
+          <Text style={styles.formLabel}>📱 Mobile Number</Text>
+          <View style={styles.phoneRow}>
+            {/* Country code */}
+            <View style={styles.countryCode}>
+              <Text style={styles.countryFlag}>🇮🇳</Text>
+              <Text style={styles.countryText}>{countryCode}</Text>
+              <Text style={styles.caret}>▾</Text>
+            </View>
+            {/* Phone input */}
+            <TextInput
+              mode="flat"
+              value={mobileNumber}
+              onChangeText={setMobileNumber}
+              keyboardType="phone-pad"
+              maxLength={10}
+              placeholder="98765 43210"
+              placeholderTextColor={Colors.textMuted}
+              style={styles.phoneInput}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+              outlineColor="transparent"
+              activeOutlineColor="transparent"
             />
           </View>
 
-          {/* Login Form */}
-          <Surface style={[styles.formContainer, { backgroundColor: theme.colors.surface }]} elevation={2}>
-            <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
-              Welcome
-            </Text>
-            <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-              Enter your mobile number to get started
-            </Text>
+          {/* Voice login hint */}
+          <TouchableOpacity style={styles.voiceRow} onPress={() => showToast('Voice login activated')}>
+            <VoiceButton onPress={() => showToast('Voice login activated')} size={32} />
+            <Text style={styles.voiceHint}>Or use Voice Login</Text>
+          </TouchableOpacity>
 
-            <View style={styles.inputContainer}>
-              {/* Country Code Picker (Mock) */}
-              <View style={[styles.countryCodeButton, { borderColor: theme.colors.outline }]}>
-                <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>{countryCode}</Text>
-                <IconButton icon="menu-down" size={20} style={styles.dropdownIcon} />
-              </View>
+          <GoOneButton
+            label="Send OTP →"
+            onPress={handleSendOTP}
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            disabled={loading || mobileNumber.length < 10}
+          />
 
-              {/* Mobile Number Input */}
-              <TextInput
-                mode="outlined"
-                label="Mobile Number"
-                value={mobileNumber}
-                onChangeText={setMobileNumber}
-                keyboardType="phone-pad"
-                style={styles.mobileInput}
-                outlineStyle={styles.inputOutline}
-                maxLength={10}
-              />
-            </View>
+          <View style={styles.divRow}>
+            <View style={styles.divLine} />
+            <Text style={styles.divText}>OR</Text>
+            <View style={styles.divLine} />
+          </View>
 
-            <Button
-              mode="contained"
-              onPress={handleSendOTP}
-              style={styles.sendButton}
-              contentStyle={styles.buttonContent}
-              loading={loading}
-              disabled={loading || mobileNumber.length < 10}
-            >
-              Send OTP
-            </Button>
+          <GoOneButton
+            label="Continue as Guest"
+            onPress={handleGuest}
+            variant="outline"
+            size="md"
+            fullWidth
+          />
 
-            <View style={styles.dividerContainer}>
-              <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
-              <Text style={[styles.dividerText, { color: theme.colors.onSurfaceVariant }]}>OR</Text>
-              <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
-            </View>
-
-            <Button
-              mode="outlined"
-              onPress={handleGuest}
-              style={styles.guestButton}
-              contentStyle={styles.buttonContent}
-            >
-              Continue as Guest
-            </Button>
-          </Surface>
-
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <Text style={styles.terms}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.termsLink}>Terms</Text>{' '}
+            &{' '}
+            <Text style={styles.termsLink}>Privacy Policy</Text>
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
+  flex: { flex: 1, backgroundColor: Colors.bgLight },
+  container: { flexGrow: 1 },
+
+  // Hero
+  hero: {
+    backgroundColor: Colors.bluePrimary,
+    paddingBottom: 60,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  keyboardView: {
-    flex: 1,
+  circle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  container: {
-    flexGrow: 1,
+  heroContent: {
+    padding: Spacing.md,
+    paddingTop: 48,
+    position: 'relative',
+    zIndex: 1,
   },
-  illustrationContainer: {
-    flex: 0.45,
-    justifyContent: 'center',
+  logoWrap: {
+    width: 100, height: 100,
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    padding: 6,
+  },
+  logo: { width: '100%', height: '100%' },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: Colors.white },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+  roleRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  rolePill: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: Radius.md,
+    padding: 10,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF', // Changed to white to match the JPEG logo background
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    minWidth: 60,
+  },
+  roleEmoji: { fontSize: 22 },
+  roleLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '700', marginTop: 4 },
+
+  // Form
+  formWrap: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -28,
+    padding: Spacing.lg,
+    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  formLabel: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, marginBottom: 8 },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgLight,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    marginBottom: 16,
     overflow: 'hidden',
   },
-  illustration: {
-    width: '100%',
-    height: '100%',
-  },
-  logoImage: {
-    width: '85%',
-    height: 180,
-  },
-  formContainer: {
-    flex: 0.55,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 24,
-    marginTop: -20,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    marginBottom: 32,
-  },
-  inputContainer: {
+  countryCode: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderRightWidth: 1,
+    borderRightColor: Colors.border,
   },
-  countryCodeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingLeft: 12,
-    paddingRight: 4,
+  countryFlag: { fontSize: 18 },
+  countryText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  caret: { fontSize: 10, color: Colors.textMuted },
+  phoneInput: {
+    flex: 1,
     height: 50,
-    marginRight: 12,
-    marginTop: 6, // Align with the outlined TextInput visually
     backgroundColor: 'transparent',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  dropdownIcon: {
-    margin: 0,
-  },
-  mobileInput: {
-    flex: 1,
-    height: 50,
-  },
-  inputOutline: {
-    borderRadius: 4,
-  },
-  sendButton: {
-    borderRadius: 8,
-    marginBottom: 24,
-  },
-  buttonContent: {
-    height: 50,
-  },
-  dividerContainer: {
+  voiceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 20,
+    justifyContent: 'center',
   },
-  divider: {
-    flex: 1,
-    height: 1,
+  voiceHint: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
+  divRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 },
+  divLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+  divText: { marginHorizontal: 16, fontSize: 12, color: Colors.textMuted, fontWeight: '700' },
+  terms: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 16,
+    lineHeight: 18,
   },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-  },
-  guestButton: {
-    borderRadius: 8,
-  },
+  termsLink: { color: Colors.bluePrimary, fontWeight: '700' },
 });
-
-export default LoginScreen;

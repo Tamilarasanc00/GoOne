@@ -1,8 +1,7 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Text, Surface, useTheme, Avatar, IconButton, Divider } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, StatusBar, Image } from 'react-native';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -11,285 +10,286 @@ import { showToast } from '../utils/toast';
 import { useAppSelector, useAppDispatch } from '../redux/hooks';
 import { resetProfile } from '../redux/slices/profileSlice';
 import { setRole } from '../redux/slices/appSlice';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-export default function ProfileScreen() {
-  const theme = useTheme();
-  const navigation = useNavigation<ProfileNavigationProp>();
-  const dispatch = useAppDispatch();
+const ROLE_EMOJI: Record<string, string> = {
+  retail_shop: '🏪',
+  farmer: '🌾',
+  service_worker: '🔧',
+  rental_owner: '🚜',
+  customer: '🛒',
+};
 
-  // Fetch active user details from Redux
-  const user = useAppSelector((state) => state.profile.user);
-  const role = useAppSelector((state) => state.profile.role);
+interface MenuItemProps {
+  emoji: string;
+  title: string;
+  subtitle?: string;
+  onPress?: () => void;
+  danger?: boolean;
+  rightEl?: React.ReactNode;
+}
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: () => {
-            storage.remove('APP_JWT_TOKEN');
-            dispatch(resetProfile());
-            dispatch(setRole(null));
-            showToast('Logged out successfully');
-            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-          }
-        }
-      ]
-    );
-  };
-
-  const handleEditProfile = () => {
-    showToast('Loading profile editor...');
-    navigation.navigate('CreateProfile', { isEdit: true });
-  };
-
-  const renderMenuItem = (icon: string, title: string, subtitle?: string, onPress?: () => void, color?: string) => (
-    <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
-      <Surface style={styles.menuItem} elevation={0}>
-        <View style={[styles.iconContainer, { backgroundColor: (color || theme.colors.primary) + '15' }]}>
-          <MaterialCommunityIcons name={icon} size={24} color={color || theme.colors.primary} />
-        </View>
-        <View style={styles.menuTextContainer}>
-          <Text variant="titleMedium" style={[styles.menuTitle, color ? { color } : null]}>
-            {title}
-          </Text>
-          {subtitle && (
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              {subtitle}
-            </Text>
-          )}
-        </View>
-        <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
-      </Surface>
+function MenuItem({ emoji, title, subtitle, onPress, danger, rightEl }: MenuItemProps) {
+  return (
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.menuIcon, danger && { backgroundColor: Colors.redSoft }]}>
+        <Text style={{ fontSize: 18 }}>{emoji}</Text>
+      </View>
+      <View style={styles.menuText}>
+        <Text style={[styles.menuTitle, danger && { color: Colors.redPrimary }]}>{title}</Text>
+        {subtitle && <Text style={styles.menuSub}>{subtitle}</Text>}
+      </View>
+      {rightEl || <Text style={styles.menuArrow}>›</Text>}
     </TouchableOpacity>
   );
+}
+
+export default function ProfileScreen() {
+  const navigation = useNavigation<ProfileNavigationProp>();
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state: any) => state.profile.user);
+  const role = useAppSelector((state: any) => state.profile.role);
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifs, setNotifs] = useState(true);
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout', style: 'destructive',
+        onPress: () => {
+          storage.remove('APP_JWT_TOKEN');
+          storage.remove(StorageKeys.USER_ROLE);
+          storage.remove(StorageKeys.USER_PROFILE);
+          dispatch(resetProfile());
+          dispatch(setRole(null));
+          showToast('Logged out successfully');
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        }
+      }
+    ]);
+  };
+
+  const userName = user?.name || 'GoOne User';
+  const firstName = userName.split(' ')[0];
+  const roleEmoji = ROLE_EMOJI[role] || '👤';
+  const roleLabel = role ? role.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 'Customer';
+
+  const goToDashboard = () => {
+    const screens: Record<string, string> = {
+      retail_shop: 'RetailerDashboard',
+      farmer: 'FarmerDashboard',
+      service_worker: 'WorkerDashboard',
+      rental_owner: 'RentalDashboard',
+    };
+    const screen = screens[role];
+    if (screen) navigation.navigate(screen as any);
+    else showToast('Dashboard only available for providers');
+  };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.purplePrimary} />
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* Profile Header */}
-        <Surface style={styles.headerSection} elevation={2}>
-          <View style={styles.profileInfo}>
-            <Avatar.Image
-              size={80}
-              source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' }}
-              style={styles.avatar}
-            />
-            <View style={styles.nameContainer}>
-              <Text variant="headlineSmall" style={styles.userName}>{user?.name || 'Tamizh User'}</Text>
-              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>{user?.phone_number || '+91 98765 43210'}</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={[styles.circle, { width: 200, height: 200, top: -60, right: -60 }]} />
+          <View style={[styles.circle, { width: 120, height: 120, bottom: -10, left: 30 }]} />
 
-              <View style={styles.roleBadge}>
-                <MaterialCommunityIcons name="account-circle-outline" size={16} color="#0066FF" />
-                <Text style={styles.roleText}>
-                  {role ? role.replace('_', ' ').toUpperCase() : 'CUSTOMER'}
-                </Text>
-              </View>
+          <View style={styles.headerContent}>
+            {/* Avatar */}
+            <View style={styles.avatarWrap}>
+              {user?.avatar && user.avatar.startsWith('data:image') ? (
+                <Image source={{ uri: user.avatar }} style={{ width: 82, height: 82, borderRadius: 41 }} />
+              ) : (
+                <Text style={styles.avatarTxt}>{firstName[0]}</Text>
+              )}
+              <View style={styles.roleEmojiBadge}><Text style={{ fontSize: 14 }}>{roleEmoji}</Text></View>
             </View>
-
-            <IconButton
-              icon="pencil"
-              mode="contained-tonal"
-              size={20}
-              onPress={handleEditProfile}
-              style={styles.editButton}
-            />
-          </View>
-        </Surface>
-
-        {/* Menu Sections */}
-        <View style={styles.menuSection}>
-          <Text variant="titleSmall" style={styles.sectionTitle}>ACCOUNT</Text>
-          <Surface style={styles.menuGroup} elevation={1}>
-            {renderMenuItem('account-edit-outline', 'Edit Profile', 'Update personal details', handleEditProfile)}
-            <Divider style={styles.divider} />
-            {renderMenuItem('translate', 'Language', 'Tamil (தமிழ்)', () => {
-              showToast('Opening language selector...');
-              navigation.navigate('LanguageSelection');
-            })}
-          </Surface>
-
-          <Text variant="titleSmall" style={styles.sectionTitle}>MY ACTIVITY</Text>
-          <Surface style={styles.menuGroup} elevation={1}>
-            {renderMenuItem('storefront-outline', 'My Listings', 'Manage your shops and items', () => {
-              if (role === 'Retailer') {
-                showToast('Loading retailer dashboard...');
-                navigation.navigate('RetailerDashboard');
-              } else if (role === 'Farmer') {
-                showToast('Loading farmer dashboard...');
-                navigation.navigate('FarmerDashboard');
-              } else if (role === 'Service Worker') {
-                showToast('Loading worker dashboard...');
-                navigation.navigate('WorkerDashboard');
-              } else if (role === 'Rental Owner') {
-                showToast('Loading rental dashboard...');
-                navigation.navigate('RentalDashboard');
-              } else {
-                showToast('My Listings is only available for Retailers, Farmers, Workers & Rental Owners');
-              }
-            })}
-            <Divider style={styles.divider} />
-            {renderMenuItem('briefcase-outline', 'My Job Postings', 'Hire workers & manage job posts', () => {
-              showToast('Loading job postings...');
-              navigation.navigate('EmployerDashboard');
-            })}
-            <Divider style={styles.divider} />
-            {renderMenuItem('calendar-check-outline', 'My Bookings', 'View active and past bookings', () => {
-              showToast('Loading booking logs...');
-              navigation.navigate('MainTabs'); // Redirects to tab navigator (contains bookings)
-            })}
-            <Divider style={styles.divider} />
-            {renderMenuItem('heart-outline', 'Saved', 'Favorite shops and workers', () => {
-              showToast('Loading saved favorites...');
-            })}
-          </Surface>
-
-          <Text variant="titleSmall" style={styles.sectionTitle}>APP PREFERENCES</Text>
-          <Surface style={styles.menuGroup} elevation={1}>
-            {renderMenuItem('cog-outline', 'Settings', 'Notifications, Privacy', () => {
-              showToast('Opening settings...');
-              navigation.navigate('Settings');
-            })}
-            <Divider style={styles.divider} />
-            {renderMenuItem('help-circle-outline', 'Help & Support', 'FAQs and Customer Care', () => {
-              showToast('Contacting customer care...');
-            })}
-          </Surface>
-
-          {/* Logout Button */}
-          <View style={styles.logoutContainer}>
-            <TouchableOpacity activeOpacity={0.7} onPress={handleLogout}>
-              <Surface style={styles.logoutButton} elevation={1}>
-                <MaterialCommunityIcons name="logout" size={24} color="#D32F2F" />
-                <Text variant="titleMedium" style={styles.logoutText}>Log Out</Text>
-              </Surface>
-            </TouchableOpacity>
+            <Text style={styles.userName}>{userName}</Text>
+            <Text style={styles.userPhone}>{user?.phone_number || '+91 98765 43210'}</Text>
+            {/* Role badge */}
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleLabel}>{roleEmoji} {roleLabel}</Text>
+            </View>
           </View>
 
-          <Text style={styles.versionText}>GoOne v1.0.0</Text>
+          {/* Stats */}
+          <View style={styles.statsRow}>
+            {[{ v: '12', l: 'Orders' }, { v: '4.8⭐', l: 'Rating' }, { v: '3', l: 'Bookings' }].map(s => (
+              <View key={s.l} style={styles.statItem}>
+                <Text style={styles.statVal}>{s.v}</Text>
+                <Text style={styles.statLbl}>{s.l}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Edit button */}
+          <TouchableOpacity style={styles.editProfileBtn} onPress={() => navigation.navigate('CreateProfile', { isEdit: true })}>
+            <Text style={styles.editProfileTxt}>✏️ Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
+        {/* Menu sections */}
+        <View style={styles.body}>
+          {/* Account */}
+          <Text style={styles.sectionTitle}>ACCOUNT</Text>
+          <View style={styles.menuGroup}>
+            <MenuItem emoji="✏️" title="Edit Profile" subtitle="Update your details" onPress={() => navigation.navigate('CreateProfile', { isEdit: true })} />
+            <View style={styles.divider} />
+            <MenuItem emoji="🌐" title="Language" subtitle="தமிழ் · Tamil" onPress={() => navigation.navigate('LanguageSelection')} />
+          </View>
+
+          {/* Activity */}
+          <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
+          <View style={styles.menuGroup}>
+            <MenuItem emoji={roleEmoji} title="My Dashboard" subtitle={`${roleLabel} dashboard`} onPress={goToDashboard} />
+            <View style={styles.divider} />
+            <MenuItem emoji="💼" title="Job Postings" subtitle="Hire workers & manage jobs" onPress={() => navigation.navigate('EmployerDashboard')} />
+            <View style={styles.divider} />
+            <MenuItem emoji="📅" title="My Bookings" subtitle="Active and past bookings" onPress={() => navigation.navigate('MainTabs')} />
+            <View style={styles.divider} />
+            <MenuItem emoji="❤️" title="Saved" subtitle="Favorites shops & workers" onPress={() => showToast('Coming soon!')} />
+          </View>
+
+          {/* Preferences */}
+          <Text style={styles.sectionTitle}>PREFERENCES</Text>
+          <View style={styles.menuGroup}>
+            <MenuItem
+              emoji="🌙"
+              title="Dark Mode"
+              subtitle={darkMode ? 'Enabled' : 'Disabled'}
+              onPress={() => setDarkMode(d => !d)}
+              rightEl={
+                <Switch
+                  value={darkMode}
+                  onValueChange={setDarkMode}
+                  thumbColor={Colors.white}
+                  trackColor={{ false: Colors.border, true: Colors.purplePrimary }}
+                />
+              }
+            />
+            <View style={styles.divider} />
+            <MenuItem
+              emoji="🔔"
+              title="Notifications"
+              subtitle={notifs ? 'Enabled' : 'Disabled'}
+              onPress={() => setNotifs(n => !n)}
+              rightEl={
+                <Switch
+                  value={notifs}
+                  onValueChange={setNotifs}
+                  thumbColor={Colors.white}
+                  trackColor={{ false: Colors.border, true: Colors.bluePrimary }}
+                />
+              }
+            />
+            <View style={styles.divider} />
+            <MenuItem emoji="🔒" title="Privacy" subtitle="Data & permissions" onPress={() => showToast('Privacy settings coming soon')} />
+          </View>
+
+          {/* Support */}
+          <Text style={styles.sectionTitle}>SUPPORT</Text>
+          <View style={styles.menuGroup}>
+            <MenuItem emoji="❓" title="Help & Support" subtitle="FAQs & Customer Care" onPress={() => showToast('Help center coming soon')} />
+            <View style={styles.divider} />
+            <MenuItem emoji="⭐" title="Rate GoOne" subtitle="Love the app? Rate us" onPress={() => showToast('Thanks! Rating feature coming soon')} />
+            <View style={styles.divider} />
+            <MenuItem emoji="ℹ️" title="About GoOne" subtitle="Version 1.0.0" onPress={() => showToast('GoOne v1.0.0 — Home & Community Hub')} />
+          </View>
+
+          {/* Logout */}
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <Text style={styles.logoutTxt}>🚪 Log Out</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.versionTxt}>GoOne v1.0.0 · Made with ❤️ for Rural India</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  headerSection: {
-    backgroundColor: '#FFF',
-    padding: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    marginBottom: 16,
-  },
-  profileInfo: {
-    flexDirection: 'row',
+  safe: { flex: 1, backgroundColor: Colors.bgLight },
+  header: {
+    backgroundColor: Colors.purplePrimary,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
+    overflow: 'hidden',
+    position: 'relative',
     alignItems: 'center',
   },
-  avatar: {
-    backgroundColor: '#E0E0E0',
+  circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.07)' },
+  headerContent: { alignItems: 'center', zIndex: 1, width: '100%' },
+  avatarWrap: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 12, position: 'relative',
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)',
   },
-  nameContainer: {
-    flex: 1,
-    marginLeft: 20,
+  avatarTxt: { fontSize: 36, fontWeight: '800', color: Colors.white },
+  roleEmojiBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, elevation: 4,
   },
-  userName: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
+  userName: { fontSize: 22, fontWeight: '800', color: Colors.white, marginBottom: 4 },
+  userPhone: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 10 },
   roleBadge: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 6, marginBottom: Spacing.md,
+  },
+  roleLabel: { fontSize: 12, fontWeight: '800', color: Colors.white },
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F4FF',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: Radius.lg, padding: Spacing.md,
+    justifyContent: 'space-around',
+    width: '100%', zIndex: 1, marginBottom: Spacing.md,
   },
-  roleText: {
-    color: '#0066FF',
-    fontWeight: 'bold',
-    fontSize: 12,
-    marginLeft: 4,
+  statItem: { alignItems: 'center' },
+  statVal: { fontSize: 16, fontWeight: '900', color: Colors.white },
+  statLbl: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  editProfileBtn: {
+    backgroundColor: Colors.white, borderRadius: Radius.full,
+    paddingHorizontal: 20, paddingVertical: 10, zIndex: 1,
   },
-  editButton: {
-    margin: 0,
-    alignSelf: 'flex-start',
-  },
-  menuSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
+  editProfileTxt: { fontSize: 13, fontWeight: '700', color: Colors.purplePrimary },
+
+  body: { padding: Spacing.md, paddingBottom: Spacing.xl },
   sectionTitle: {
-    color: '#757575',
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    marginTop: 16,
-    marginBottom: 8,
-    marginLeft: 12,
+    fontSize: 11, fontWeight: '800', color: Colors.textMuted,
+    letterSpacing: 1.2, marginTop: 20, marginBottom: 8, marginLeft: 4,
   },
   menuGroup: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: Colors.white, borderRadius: Radius.lg, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 2,
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'transparent',
+  menuItem: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md },
+  menuIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.bgLight, alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+  menuText: { flex: 1 },
+  menuTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  menuSub: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+  menuArrow: { fontSize: 20, color: Colors.textMuted },
+  divider: { height: 1, backgroundColor: Colors.border, marginLeft: 64 },
+
+  logoutBtn: {
+    marginTop: Spacing.lg, backgroundColor: Colors.redSoft,
+    borderRadius: Radius.lg, padding: Spacing.md + 4, alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.redPrimary + '40',
   },
-  menuTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  menuTitle: {
-    fontWeight: '600',
-  },
-  divider: {
-    marginLeft: 72,
-    height: 1,
-    backgroundColor: '#F0F0F0',
-  },
-  logoutContainer: {
-    marginTop: 32,
-    marginBottom: 24,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFEBEE',
-    padding: 16,
-    borderRadius: 16,
-  },
-  logoutText: {
-    color: '#D32F2F',
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  versionText: {
-    textAlign: 'center',
-    color: '#9E9E9E',
-    fontSize: 12,
-  },
+  logoutTxt: { fontSize: 15, fontWeight: '800', color: Colors.redPrimary },
+
+  versionTxt: { textAlign: 'center', fontSize: 11, color: Colors.textMuted, marginTop: Spacing.md },
 });

@@ -1,87 +1,70 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, TextInput as RNTextInput } from 'react-native';
-import { Text, Button, Surface, useTheme, HelperText, IconButton } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  View,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput as RNTextInput,
+  TouchableOpacity,
+  StatusBar,
+} from 'react-native';
+import { Text, Surface } from 'react-native-paper';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
-
 import { apiService } from '../services/apiService';
 import { storage, StorageKeys } from '../services/storage';
-import { Alert } from 'react-native';
 import { showToast } from '../utils/toast';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
+import { GoOneButton } from '../components/GoOneUI';
 
 type OtpVerificationNavigationProp = NativeStackNavigationProp<RootStackParamList, 'OtpVerification'>;
 type OtpVerificationRouteProp = RouteProp<RootStackParamList, 'OtpVerification'>;
 
 const OTP_LENGTH = 4;
-const RESEND_TIMEOUT = 30; // seconds
+const RESEND_TIMEOUT = 30;
 
-const OtpVerificationScreen = () => {
-  const theme = useTheme();
+export default function OtpVerificationScreen() {
   const navigation = useNavigation<OtpVerificationNavigationProp>();
   const route = useRoute<OtpVerificationRouteProp>();
-  
-  // Get mobile number and mockOtp from params
   const mobileNumber = route.params?.mobileNumber || 'your number';
   const mockOtp = route.params?.mockOtp;
 
   const [otp, setOtp] = useState<string[]>(new Array(OTP_LENGTH).fill(''));
-  const [activeOTPIndex, setActiveOTPIndex] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
-  const [resendTimer, setResendTimer] = useState<number>(RESEND_TIMEOUT);
-
+  const [activeIndex, setActiveIndex] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [resendTimer, setResendTimer] = useState(RESEND_TIMEOUT);
   const inputRef = useRef<RNTextInput>(null);
 
-  // Auto focus first input on mount
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
-  // Autofill OTP if mockOtp is present in route params
   useEffect(() => {
-    if (mockOtp) {
-      setOtp(mockOtp.split(''));
-    }
+    if (mockOtp) setOtp(mockOtp.toString().padEnd(OTP_LENGTH, '0').split('').slice(0, OTP_LENGTH));
   }, [mockOtp]);
 
-  // Timer for Resend OTP
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
+    if (resendTimer <= 0) return;
+    const t = setInterval(() => setResendTimer(p => p - 1), 1000);
+    return () => clearInterval(t);
   }, [resendTimer]);
 
   const handleChange = (text: string, index: number) => {
     const newOtp = [...otp];
-    newOtp[index] = text.substring(text.length - 1); // Only take the last character
+    newOtp[index] = text.slice(-1);
     setOtp(newOtp);
-    setError(''); // Clear error on typing
-
+    setError('');
     if (!text) {
-      setActiveOTPIndex(index - 1 >= 0 ? index - 1 : 0);
+      setActiveIndex(Math.max(0, index - 1));
     } else {
-      setActiveOTPIndex(index + 1 < OTP_LENGTH ? index + 1 : OTP_LENGTH - 1);
+      setActiveIndex(Math.min(OTP_LENGTH - 1, index + 1));
     }
   };
 
   const handleKeyPress = (e: any, index: number) => {
     if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      setActiveOTPIndex(index - 1);
-    }
-  };
-
-  const handleResend = () => {
-    if (resendTimer === 0) {
-      setResendTimer(RESEND_TIMEOUT);
-      setOtp(new Array(OTP_LENGTH).fill(''));
-      setActiveOTPIndex(0);
-      setError('');
+      setActiveIndex(index - 1);
     }
   };
 
@@ -89,261 +72,243 @@ const OtpVerificationScreen = () => {
     const otpValue = otp.join('');
     if (otpValue.length < OTP_LENGTH) {
       setError('Please enter complete OTP');
-      showToast('Enter complete OTP');
       return;
     }
-
     setIsLoading(true);
     setError('');
     showToast('Verifying OTP...');
-
     try {
-      // 1. Call verification API
       const result = await apiService.auth.verifyOtp(mobileNumber, otpValue);
-      
-      if (result && result.token) {
-        showToast('Login successful!');
-        // 2. Persist Access Token
+      if (result?.token) {
         storage.set('APP_JWT_TOKEN', result.token);
-
-        // 3. Fetch profile completion status
+        showToast('Login successful!');
         const statusRes = await apiService.profile.checkStatus();
         const { is_profile_completed, role } = statusRes;
-
-        if (role) {
-          storage.set(StorageKeys.USER_ROLE, role);
-        }
-
+        if (role) storage.set(StorageKeys.USER_ROLE, role);
         if (is_profile_completed) {
-          showToast('Welcome back!');
-          if (role === 'Retailer' || role === 'retail_shop') {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'RetailerDashboard' }],
-            });
-          } else {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }],
-            });
-          }
+          navigation.reset({
+            index: 0,
+            routes: [{ name: role === 'Retailer' || role === 'retail_shop' ? 'RetailerDashboard' : 'MainTabs' }],
+          });
         } else {
-          showToast('Complete your profile details');
-          // If role chosen, navigate to CreateProfile, else let them select role
-          if (role) {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'CreateProfile' }],
-            });
-          } else {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'RoleSelection' }],
-            });
-          }
+          navigation.reset({ index: 0, routes: [{ name: 'RoleSelection' }] });
         }
       } else {
-        setError('Invalid OTP code.');
+        setError('Invalid OTP code');
         showToast('Invalid OTP');
       }
     } catch (err: any) {
-      setError(err.message || 'OTP verification failed.');
-      showToast(err.message || 'OTP verification failed.');
+      setError(err.message || 'OTP verification failed');
+      showToast(err.message || 'Verification failed');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const filledCount = otp.filter(d => d !== '').length;
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <IconButton
-          icon="arrow-left"
-          size={24}
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        />
-        <Text variant="titleLarge" style={styles.headerRowTitle}>Login</Text>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar barStyle="light-content" backgroundColor={Colors.purplePrimary} />
+
+      {/* Hero */}
+      <View style={styles.hero}>
+        <View style={[styles.circle, { width: 200, height: 200, top: -60, right: -60 }]} />
+        <View style={[styles.circle, { width: 120, height: 120, bottom: 0, left: 20 }]} />
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backTxt}>← Back</Text>
+        </TouchableOpacity>
+        <View style={styles.heroIcon}><Text style={styles.heroEmoji}>🔑</Text></View>
+        <Text style={styles.heroTitle}>Enter OTP</Text>
+        <Text style={styles.heroSub}>Sent to {mobileNumber}</Text>
       </View>
 
-      <KeyboardAvoidingView 
-        style={styles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <Surface style={[styles.surface, { backgroundColor: theme.colors.surface }]} elevation={2}>
-          <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
-            Verify OTP
-          </Text>
-          <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }, mockOtp ? { marginBottom: 16 } : null]}>
-            Code has been sent to {mobileNumber}
-          </Text>
-          {mockOtp && (
-            <Surface style={styles.testBadge} elevation={0}>
-              <Text style={styles.testBadgeText}>
-                🔑 Test OTP: <Text style={{ fontWeight: 'bold' }}>{mockOtp}</Text>
-              </Text>
-            </Surface>
-          )}
+      {/* Form */}
+      <View style={styles.formWrap}>
+        <Text style={styles.formHint}>Enter 4-digit OTP sent to your number</Text>
 
-          <View style={styles.otpContainer}>
-            {otp.map((digit, index) => (
+        {mockOtp && (
+          <Surface style={styles.mockBadge} elevation={0}>
+            <Text style={styles.mockText}>🔑 Test OTP: <Text style={{ fontWeight: 'bold' }}>{mockOtp}</Text></Text>
+          </Surface>
+        )}
+
+        {/* OTP Boxes */}
+        <View style={styles.otpRow}>
+          {otp.map((digit, i) => {
+            const isFilled = digit !== '';
+            const isActive = activeIndex === i;
+            return (
               <View
-                key={index}
+                key={i}
                 style={[
-                  styles.otpInputContainer,
-                  {
-                    borderColor: activeOTPIndex === index ? theme.colors.primary : theme.colors.outline,
-                    backgroundColor: theme.colors.background,
-                  }
+                  styles.otpBox,
+                  isActive && styles.otpBoxActive,
+                  isFilled && styles.otpBoxFilled,
                 ]}
               >
                 <RNTextInput
-                  ref={activeOTPIndex === index ? inputRef : null}
-                  style={[styles.otpInput, { color: theme.colors.onSurface }]}
+                  ref={activeIndex === i ? inputRef : null}
+                  style={styles.otpInput}
                   keyboardType="numeric"
                   maxLength={1}
                   value={digit}
-                  onChangeText={(text) => handleChange(text, index)}
-                  onKeyPress={(e) => handleKeyPress(e, index)}
-                  onFocus={() => setActiveOTPIndex(index)}
-                  autoFocus={index === 0}
-                  selectionColor={theme.colors.primary}
+                  onChangeText={text => handleChange(text, i)}
+                  onKeyPress={e => handleKeyPress(e, i)}
+                  onFocus={() => setActiveIndex(i)}
+                  autoFocus={i === 0}
+                  selectionColor={Colors.bluePrimary}
                 />
               </View>
-            ))}
-          </View>
+            );
+          })}
+        </View>
 
-          <HelperText type="error" visible={!!error} style={styles.errorText}>
-            {error}
-          </HelperText>
+        {/* Progress bar */}
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${(filledCount / OTP_LENGTH) * 100}%` }]} />
+        </View>
 
-          <Button 
-            mode="contained" 
-            onPress={handleVerify} 
-            loading={isLoading}
-            disabled={isLoading || otp.join('').length < OTP_LENGTH}
-            style={styles.verifyButton}
-            contentStyle={styles.buttonContent}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <GoOneButton
+          label="✓ Verify OTP"
+          onPress={handleVerify}
+          variant="primary"
+          size="lg"
+          fullWidth
+          loading={isLoading}
+          disabled={isLoading || filledCount < OTP_LENGTH}
+          style={{ marginTop: Spacing.lg }}
+        />
+
+        <View style={styles.resendRow}>
+          <Text style={styles.resendHint}>Didn't receive? </Text>
+          <TouchableOpacity
+            onPress={() => {
+              if (resendTimer <= 0) {
+                setResendTimer(RESEND_TIMEOUT);
+                setOtp(new Array(OTP_LENGTH).fill(''));
+                setActiveIndex(0);
+                setError('');
+              }
+            }}
+            disabled={resendTimer > 0}
           >
-            Verify
-          </Button>
-
-          <View style={styles.resendContainer}>
-            <Text style={{ color: theme.colors.onSurfaceVariant }}>
-              Didn't receive code?{' '}
+            <Text style={[styles.resendBtn, resendTimer > 0 && styles.resendDisabled]}>
+              {resendTimer > 0 ? `Resend in 0:${String(resendTimer).padStart(2, '0')}` : 'Resend OTP'}
             </Text>
-            <Button 
-              mode="text" 
-              onPress={handleResend} 
-              disabled={resendTimer > 0}
-              compact
-              labelStyle={[
-                styles.resendButtonLabel,
-                { color: resendTimer > 0 ? theme.colors.onSurfaceVariant : theme.colors.primary }
-              ]}
-            >
-              {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-            </Button>
-          </View>
-        </Surface>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.changeRow} onPress={() => navigation.goBack()}>
+          <Text style={styles.changeText}>✕ Change Number</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
+  flex: { flex: 1, backgroundColor: Colors.bgLight },
+
+  hero: {
+    backgroundColor: Colors.purplePrimary,
+    paddingTop: 48,
+    paddingBottom: 60,
+    paddingHorizontal: Spacing.md,
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  backButton: {
-    margin: 0,
+  circle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  headerRowTitle: {
-    fontWeight: 'bold',
-    marginLeft: 8,
+  backBtn: { alignSelf: 'flex-start', marginBottom: 16 },
+  backTxt: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '700' },
+  heroIcon: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
   },
-  container: {
+  heroEmoji: { fontSize: 40 },
+  heroTitle: { fontSize: 26, fontWeight: '800', color: Colors.white },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+
+  formWrap: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -28,
+    padding: Spacing.lg,
     flex: 1,
+  },
+  formHint: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', marginBottom: 16 },
+  mockBadge: {
+    backgroundColor: Colors.amberSoft,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  mockText: { color: Colors.amberPrimary, fontSize: 13 },
+
+  otpRow: {
+    flexDirection: 'row',
     justifyContent: 'center',
-    padding: 20,
+    gap: 12,
+    marginBottom: 12,
   },
-  surface: {
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    maxWidth: 240,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  otpInputContainer: {
-    width: 45,
-    height: 55,
+  otpBox: {
+    width: 60, height: 64,
+    borderRadius: Radius.md,
     borderWidth: 2,
-    borderRadius: 8,
-    justifyContent: 'center',
+    borderColor: Colors.border,
+    backgroundColor: Colors.bgLight,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpBoxActive: {
+    borderColor: Colors.bluePrimary,
+    backgroundColor: Colors.blueSoft,
+  },
+  otpBoxFilled: {
+    borderColor: Colors.greenPrimary,
+    backgroundColor: Colors.greenSoft,
   },
   otpInput: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '800',
+    color: Colors.textPrimary,
     textAlign: 'center',
     width: '100%',
     height: '100%',
   },
-  errorText: {
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  verifyButton: {
-    width: '100%',
-    borderRadius: 8,
-    marginBottom: 24,
-  },
-  buttonContent: {
-    height: 50,
-  },
-  resendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  resendButtonLabel: {
-    fontWeight: 'bold',
-  },
-  testBadge: {
-    backgroundColor: '#FFF8E1',
-    borderColor: '#FFE082',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 20,
-    alignSelf: 'center',
-  },
-  testBadgeText: {
-    color: '#FF8F00',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-});
 
-export default OtpVerificationScreen;
+  progressBar: {
+    height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    marginBottom: 8, overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%', borderRadius: 2,
+    backgroundColor: Colors.bluePrimary,
+  },
+
+  errorText: {
+    color: Colors.redPrimary, fontSize: 13, fontWeight: '600',
+    textAlign: 'center', marginTop: 4,
+  },
+  resendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  resendHint: { fontSize: 13, color: Colors.textMuted },
+  resendBtn: { fontSize: 13, fontWeight: '700', color: Colors.bluePrimary },
+  resendDisabled: { color: Colors.textMuted },
+
+  changeRow: { alignItems: 'center', marginTop: 10 },
+  changeText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+});

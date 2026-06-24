@@ -43,7 +43,7 @@ export const getCurrentLocation = (): Promise<LocationCoordinates> => {
       (error) => {
         reject(error);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 10000 }
     );
   });
 };

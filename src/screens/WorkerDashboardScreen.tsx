@@ -1,23 +1,28 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
-import { Text, Surface, useTheme, Avatar, IconButton, Button, Divider } from 'react-native-paper';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, StatusBar } from 'react-native';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAppSelector } from '../redux/hooks';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
+import { SectionHeader, StatusChip } from '../components/GoOneUI';
 
 type WorkerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-const PRIMARY_COLOR = '#0066FF'; // Theme color
+
+const MOCK_JOB_REQUESTS = [
+  { id: 1, title: 'Electrical Repairs', location: 'Omalur, Salem', rate: '₹500', urgent: true },
+  { id: 2, title: 'Plumbing Fix', location: 'Attur, Salem', rate: '₹400', urgent: false },
+  { id: 3, title: 'AC Service', location: 'Namakkal', rate: '₹600', urgent: false },
+];
 
 export default function WorkerDashboardScreen() {
-  const theme = useTheme();
   const navigation = useNavigation<WorkerDashboardNavigationProp>();
-
-  const user = useAppSelector((state) => state.profile.user);
+  const user = useAppSelector((state: any) => state.profile.user);
 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,336 +30,216 @@ export default function WorkerDashboardScreen() {
   const [error, setError] = useState(false);
 
   const loadProfile = async () => {
-    setLoading(true);
-    setError(false);
+    setLoading(true); setError(false);
     try {
       const res = await apiService.workers.getMyProfile();
-      if (res && res.success) {
-        setProfile(res.profile);
-      } else {
-        setError(true);
-      }
-    } catch (err) {
-      console.warn('Failed to load worker profile:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+      if (res?.success) setProfile(res.profile);
+      else setError(true);
+    } catch { setError(true); }
+    finally { setLoading(false); }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadProfile();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadProfile(); }, []));
 
-  const handleToggleAvailability = async () => {
+  const handleToggle = async () => {
     if (toggling) return;
     setToggling(true);
-    showToast('Toggling availability status...');
     try {
       const res = await apiService.workers.toggleAvailability();
-      if (res && res.success) {
-        const nextState = res.is_available;
-        setProfile((prev: any) => prev ? { ...prev, is_available: nextState } : null);
-        showToast(nextState ? 'You are now Available' : 'You are now Offline');
-      } else {
-        showToast('Failed to toggle status');
+      if (res?.success) {
+        setProfile((p: any) => p ? { ...p, is_available: res.is_available } : null);
+        showToast(res.is_available ? '✅ You are now Available' : '⏸️ You are now Offline');
       }
-    } catch (err: any) {
-      showToast(err.message || 'Error toggling availability');
-    } finally {
-      setToggling(false);
-    }
+    } catch (err: any) { showToast(err.message || 'Error toggling'); }
+    finally { setToggling(false); }
   };
 
-  const renderStatCard = (title: string, value: string, icon: string, color: string) => (
-    <Surface style={styles.statCard} elevation={1}>
-      <View style={[styles.statIconContainer, { backgroundColor: color + '20' }]}>
-        <MaterialCommunityIcons name={icon} size={28} color={color} />
-      </View>
-      <Text variant="headlineSmall" style={styles.statValue}>{value}</Text>
-      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>{title}</Text>
-    </Surface>
-  );
+  const workerName = user?.name || 'Worker';
+  const isAvail = !!profile?.is_available;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.purplePrimary} />
+
+      {/* Purple gradient header */}
       <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={24}
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        />
-        <View style={styles.headerProfile}>
-          <Avatar.Image 
-            size={48} 
-            source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80' }} 
-          />
-          <View style={styles.headerTextContainer}>
-            <Text variant="titleMedium" style={styles.workerName}>
-              {user?.name || 'Service Provider'}
-            </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Service Worker Dashboard</Text>
+        <View style={[styles.circle, { width: 200, height: 200, top: -60, right: -60 }]} />
+        <View style={[styles.circle, { width: 120, height: 120, bottom: -20, left: 40 }]} />
+
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatar}><Text style={styles.avatarTxt}>🔧</Text></View>
+            <View>
+              <Text style={styles.workerName}>{workerName}</Text>
+              <Text style={styles.workerSub}>Service Worker Dashboard</Text>
+            </View>
           </View>
+          <View style={styles.verifiedBadge}>
+            <Text style={styles.verifiedTxt}>✓ Verified</Text>
+          </View>
+        </View>
+
+        {/* Availability toggle */}
+        <View style={styles.availWrap}>
+          <View>
+            <Text style={styles.availTitle}>Availability Status</Text>
+            <Text style={[styles.availStatus, { color: isAvail ? Colors.greenLight : Colors.redLight }]}>
+              {isAvail ? '● Available for Jobs' : '● Offline / Busy'}
+            </Text>
+          </View>
+          <Switch
+            value={isAvail}
+            onValueChange={handleToggle}
+            disabled={toggling || loading}
+            thumbColor={Colors.white}
+            trackColor={{ false: 'rgba(255,255,255,0.2)', true: Colors.greenPrimary }}
+          />
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {[{ v: '⭐ 4.8', l: 'Rating' }, { v: '14', l: 'Bookings' }, { v: '₹7.2K', l: 'Earnings' }].map(s => (
+            <View key={s.l} style={styles.statItem}>
+              <Text style={styles.statVal}>{s.v}</Text>
+              <Text style={styles.statLbl}>{s.l}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        {/* Availability Switch */}
-        <Surface style={styles.availabilityCard} elevation={1}>
-          <View style={styles.availabilityRow}>
-            <View>
-              <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>Duty Status</Text>
-              <Text 
-                variant="bodyMedium" 
-                style={{ 
-                  color: profile?.is_available ? '#4CAF50' : '#FF9800', 
-                  fontWeight: 'bold',
-                  marginTop: 2
-                }}
-              >
-                {profile?.is_available ? 'Available for Jobs' : 'Offline / Busy'}
-              </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Skills */}
+        {profile?.service_category && (
+          <View style={styles.skillsSection}>
+            <SectionHeader title="My Skills" />
+            <View style={styles.skillsRow}>
+              {(profile.service_category || 'Electrician').split(',').map((s: string) => (
+                <View key={s} style={styles.skillChip}>
+                  <Text style={styles.skillTxt}>{s.trim()}</Text>
+                </View>
+              ))}
             </View>
-            <Switch
-              value={!!profile?.is_available}
-              onValueChange={handleToggleAvailability}
-              disabled={toggling || loading}
-              thumbColor={profile?.is_available ? '#4CAF50' : '#FF9800'}
-              trackColor={{ false: '#FFE0B2', true: '#C8E6C9' }}
-            />
           </View>
-        </Surface>
-
-        {/* Statistics Grid */}
-        <View style={styles.sectionHeader}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>Overview</Text>
-        </View>
-        
-        <View style={styles.statsGrid}>
-          {renderStatCard('Rating', '4.8', 'star', '#FFC107')}
-          {renderStatCard('Views', '86', 'eye-outline', '#9C27B0')}
-          {renderStatCard('Bookings', '14', 'calendar-check-outline', '#2196F3')}
-          {renderStatCard('Earnings', '₹7,200', 'currency-inr', '#4CAF50')}
-        </View>
-
-        {/* Service Profile details */}
-        <View style={styles.sectionHeader}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>My Service Details</Text>
-        </View>
-
-        {loading ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-            <Text style={{ marginTop: 8 }}>Loading service profile...</Text>
-          </View>
-        ) : error ? (
-          <Surface style={styles.errorContainer} elevation={0}>
-            <Text style={{ color: '#D32F2F', fontWeight: 'bold' }}>Failed to retrieve service profile.</Text>
-            <Button mode="text" onPress={loadProfile}>Retry</Button>
-          </Surface>
-        ) : !profile ? (
-          <Surface style={styles.emptyContainer} elevation={0}>
-            <MaterialCommunityIcons name="wrench-outline" size={48} color="#9E9E9E" />
-            <Text style={styles.emptyText}>No service profile details set up.</Text>
-            <Button 
-              mode="contained" 
-              onPress={() => navigation.navigate('CreateProfile', { isEdit: true })} 
-              style={{ marginTop: 12 }}
-            >
-              Set Up Service Details
-            </Button>
-          </Surface>
-        ) : (
-          <Surface style={styles.profileDetailsCard} elevation={1}>
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="toolbox-outline" size={22} color={PRIMARY_COLOR} />
-              <View style={styles.detailTextContainer}>
-                <Text variant="bodySmall" style={styles.detailLabel}>Service Offered</Text>
-                <Text variant="titleMedium" style={styles.detailValue}>{profile.service_category}</Text>
-              </View>
-            </View>
-            
-            <Divider style={styles.divider} />
-
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="currency-inr" size={22} color={PRIMARY_COLOR} />
-              <View style={styles.detailTextContainer}>
-                <Text variant="bodySmall" style={styles.detailLabel}>Base / Hourly Rate</Text>
-                <Text variant="titleMedium" style={styles.detailValue}>₹{profile.hourly_rate}</Text>
-              </View>
-            </View>
-
-            <Divider style={styles.divider} />
-
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="history" size={22} color={PRIMARY_COLOR} />
-              <View style={styles.detailTextContainer}>
-                <Text variant="bodySmall" style={styles.detailLabel}>Work Experience</Text>
-                <Text variant="titleMedium" style={styles.detailValue}>{profile.experience_years} Years</Text>
-              </View>
-            </View>
-
-            <Divider style={styles.divider} />
-
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="map-marker-outline" size={22} color={PRIMARY_COLOR} />
-              <View style={styles.detailTextContainer}>
-                <Text variant="bodySmall" style={styles.detailLabel}>Service / Location Area</Text>
-                <Text variant="titleMedium" style={styles.detailValue}>{profile.location}</Text>
-              </View>
-            </View>
-
-            <Button
-              mode="contained"
-              icon="account-edit-outline"
-              onPress={() => navigation.navigate('CreateProfile', { isEdit: true })}
-              style={styles.editProfileBtn}
-              contentStyle={{ height: 48 }}
-            >
-              Edit Service Profile
-            </Button>
-          </Surface>
         )}
 
+        {/* Service details */}
+        <SectionHeader title="📋 Service Profile" actionLabel="Edit" onAction={() => navigation.navigate('CreateProfile', { isEdit: true })} />
+        {loading ? (
+          <View style={styles.loader}><ActivityIndicator size="large" color={Colors.purplePrimary} /></View>
+        ) : error ? (
+          <TouchableOpacity style={styles.errorCard} onPress={loadProfile}>
+            <Text style={styles.errorTxt}>⚠️ Failed to load. Tap to retry.</Text>
+          </TouchableOpacity>
+        ) : !profile ? (
+          <View style={styles.emptyCard}>
+            <Text style={{ fontSize: 40 }}>🔧</Text>
+            <Text style={styles.emptyTxt}>No service profile set up</Text>
+            <TouchableOpacity style={[styles.addBtn, { backgroundColor: Colors.purplePrimary }]} onPress={() => navigation.navigate('CreateProfile', { isEdit: true })}>
+              <Text style={styles.addBtnTxt}>+ Set Up Profile</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.profileCard}>
+            {[
+              { emoji: '🔧', label: 'Service', value: profile.service_category },
+              { emoji: '💰', label: 'Rate', value: `₹${profile.hourly_rate}/hr` },
+              { emoji: '📅', label: 'Experience', value: `${profile.experience_years} Years` },
+              { emoji: '📍', label: 'Location', value: profile.location },
+            ].map(row => (
+              <View key={row.label} style={styles.detailRow}>
+                <Text style={{ fontSize: 18 }}>{row.emoji}</Text>
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={styles.detailLabel}>{row.label}</Text>
+                  <Text style={styles.detailValue}>{row.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Job Requests */}
+        <SectionHeader title="📩 Job Requests" />
+        {MOCK_JOB_REQUESTS.map(job => (
+          <View key={job.id} style={styles.jobCard}>
+            <View style={styles.jobLeft}>
+              {job.urgent && <StatusChip label="URGENT" type="red" />}
+              <Text style={styles.jobTitle}>{job.title}</Text>
+              <Text style={styles.jobLocation}>📍 {job.location}</Text>
+              <Text style={styles.jobRate}>{job.rate}</Text>
+            </View>
+            <View style={styles.jobActions}>
+              <TouchableOpacity style={styles.acceptBtn} onPress={() => showToast('Job accepted!')}>
+                <Text style={styles.acceptTxt}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.callBtn} onPress={() => showToast('Calling employer...')}>
+                <Text style={styles.callTxt}>📞</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safe: { flex: 1, backgroundColor: Colors.bgLight },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    backgroundColor: Colors.purplePrimary,
+    paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.xl,
+    overflow: 'hidden', position: 'relative',
   },
-  backButton: {
-    margin: 0,
+  circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.07)' },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  avatarTxt: { fontSize: 24 },
+  workerName: { fontSize: 16, fontWeight: '800', color: Colors.white },
+  workerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  verifiedBadge: { backgroundColor: Colors.greenPrimary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
+  verifiedTxt: { color: Colors.white, fontSize: 10, fontWeight: '800' },
+  availWrap: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: Radius.md, padding: Spacing.md,
+    marginBottom: Spacing.sm, zIndex: 1,
   },
-  headerProfile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 8,
+  availTitle: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.8)' },
+  availStatus: { fontSize: 13, fontWeight: '800', marginTop: 2 },
+  statsRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: Radius.lg, padding: Spacing.md, justifyContent: 'space-around', zIndex: 1 },
+  statItem: { alignItems: 'center' },
+  statVal: { fontSize: 14, fontWeight: '900', color: Colors.white },
+  statLbl: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  scroll: { padding: Spacing.md, paddingTop: Spacing.lg },
+  skillsSection: { marginBottom: Spacing.md },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  skillChip: { backgroundColor: Colors.purpleSoft, borderRadius: Radius.full, paddingHorizontal: 12, paddingVertical: 6 },
+  skillTxt: { fontSize: 12, fontWeight: '700', color: Colors.purplePrimary },
+  loader: { paddingVertical: 32, alignItems: 'center' },
+  errorCard: { padding: Spacing.md, backgroundColor: Colors.redSoft, borderRadius: Radius.md, marginBottom: Spacing.md },
+  errorTxt: { color: Colors.redPrimary, fontWeight: '600', fontSize: 13 },
+  emptyCard: { padding: Spacing.xl, backgroundColor: Colors.white, borderRadius: Radius.lg, alignItems: 'center', marginBottom: Spacing.md },
+  emptyTxt: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginTop: 8, marginBottom: 12 },
+  addBtn: { borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 10 },
+  addBtnTxt: { color: Colors.white, fontWeight: '700', fontSize: 13 },
+  profileCard: {
+    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.md,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 2, gap: 14,
   },
-  headerTextContainer: {
-    marginLeft: 12,
+  detailRow: { flexDirection: 'row', alignItems: 'center' },
+  detailLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
+  detailValue: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginTop: 1 },
+  jobCard: {
+    flexDirection: 'row', backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.md,
+    marginBottom: 10, alignItems: 'center', justifyContent: 'space-between',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 1,
   },
-  workerName: {
-    fontWeight: 'bold',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  availabilityCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 20,
-  },
-  availabilityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontWeight: 'bold',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  statValue: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  profileDetailsCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  detailTextContainer: {
-    marginLeft: 16,
-  },
-  detailLabel: {
-    color: '#757575',
-  },
-  detailValue: {
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 10,
-  },
-  editProfileBtn: {
-    marginTop: 20,
-    borderRadius: 8,
-  },
-  loaderContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 24,
-  },
-  errorContainer: {
-    backgroundColor: '#FFEBEE',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyContainer: {
-    backgroundColor: '#F5F5F5',
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyText: {
-    color: '#757575',
-    marginTop: 8,
-    fontWeight: '500',
-  },
+  jobLeft: { flex: 1, gap: 3 },
+  jobTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  jobLocation: { fontSize: 11, color: Colors.textMuted },
+  jobRate: { fontSize: 14, fontWeight: '800', color: Colors.purplePrimary },
+  jobActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  acceptBtn: { backgroundColor: Colors.purplePrimary, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8 },
+  acceptTxt: { color: Colors.white, fontWeight: '700', fontSize: 12 },
+  callBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.greenSoft, alignItems: 'center', justifyContent: 'center' },
+  callTxt: { fontSize: 16 },
 });

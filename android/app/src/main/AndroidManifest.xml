@@ -1,11 +1,15 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
       android:name=".MainApplication"
+      tools:replace="android:appComponentFactory"
+      android:appComponentFactory="androidx.core.app.CoreComponentFactory"
       android:label="@string/app_name"
       android:icon="@mipmap/ic_launcher"
       android:roundIcon="@mipmap/ic_launcher_round"
@@ -17,7 +21,7 @@
       <!-- Google Maps API Key -->
       <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE" />
+        android:value="AIzaSyCL230d12kGTWTm0iG6f42pUfrvXMuNFeM" />
 
       <activity
         android:name=".MainActivity"

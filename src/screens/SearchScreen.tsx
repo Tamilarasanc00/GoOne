@@ -1,116 +1,112 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Keyboard } from 'react-native';
-import { Text, Searchbar, Surface, useTheme, Chip, IconButton, Divider } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { Text, Searchbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
+import { SectionHeader, VoiceButton } from '../components/GoOneUI';
+import { showToast } from '../utils/toast';
 
 const RECENT_SEARCHES = ['Plumber', 'Tata Ace', 'Tomato seeds', 'Electrician', 'Ponni Rice'];
 const TRENDING_CATEGORIES = [
-  { name: 'Hardware', icon: 'tools' },
-  { name: 'Fertilizers', icon: 'sprout' },
-  { name: 'Tractors', icon: 'tractor' },
-  { name: 'Construction', icon: 'account-hard-hat' },
-  { name: 'Groceries', icon: 'basket' },
+  { name: 'Hardware', emoji: '🔧', color: Colors.bluePrimary, bg: Colors.blueSoft },
+  { name: 'Fertilizers', emoji: '🌱', color: Colors.greenPrimary, bg: Colors.greenSoft },
+  { name: 'Tractors', emoji: '🚜', color: Colors.amberPrimary, bg: Colors.amberSoft },
+  { name: 'Construction', emoji: '👷', color: Colors.orangePrimary, bg: Colors.orangeSoft },
+  { name: 'Groceries', emoji: '🛒', color: Colors.purplePrimary, bg: Colors.purpleSoft },
 ];
 
 export default function SearchScreen() {
-  const theme = useTheme();
+  const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentSearches, setRecentSearches] = useState(RECENT_SEARCHES);
+  const [recent, setRecent] = useState(RECENT_SEARCHES);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // In a real app, this would trigger an API search call
-  };
-
-  const clearRecentSearches = () => {
-    setRecentSearches([]);
-  };
-
-  const removeRecentSearch = (itemToRemove: string) => {
-    setRecentSearches(recentSearches.filter(item => item !== itemToRemove));
+    if (query) {
+      showToast(`Searching for: ${query}`);
+    }
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-      
-      {/* Search Header */}
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+
+      {/* Header */}
       <View style={styles.header}>
-        <Searchbar
-          placeholder="Search shops, services, or rentals..."
-          onChangeText={handleSearch}
-          value={searchQuery}
-          style={styles.searchBar}
-          elevation={1}
-          autoFocus
-          clearIcon="close"
-          icon="magnify"
-        />
+        <View style={styles.searchBarWrap}>
+          <Searchbar
+            placeholder="Search shops, services..."
+            onChangeText={handleSearch}
+            value={searchQuery}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            elevation={0}
+            autoFocus
+            iconColor={Colors.bluePrimary}
+            placeholderTextColor={Colors.textMuted}
+          />
+          <View style={styles.voiceBtnWrap}>
+            <VoiceButton size={40} onPress={() => showToast('Voice search activated')} />
+          </View>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         
-        {/* Recent Searches */}
-        {recentSearches.length > 0 && (
+        {/* Recent */}
+        {recent.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>Recent Searches</Text>
-              <TouchableOpacity onPress={clearRecentSearches}>
-                <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-
+            <SectionHeader title="Recent Searches" actionLabel="Clear" onAction={() => setRecent([])} />
             <View style={styles.recentList}>
-              {recentSearches.map((item, index) => (
-                <View key={index} style={styles.recentItem}>
-                  <MaterialCommunityIcons name="history" size={20} color="#757575" />
-                  <TouchableOpacity style={styles.recentItemTextContainer} onPress={() => handleSearch(item)}>
-                    <Text variant="bodyLarge" style={styles.recentItemText}>{item}</Text>
+              {recent.map(item => (
+                <View key={item} style={styles.recentItem}>
+                  <Text style={{ fontSize: 18, color: Colors.textMuted }}>🕒</Text>
+                  <TouchableOpacity style={styles.recentItemTxtWrap} onPress={() => handleSearch(item)}>
+                    <Text style={styles.recentItemTxt}>{item}</Text>
                   </TouchableOpacity>
-                  <IconButton
-                    icon="close"
-                    size={20}
-                    iconColor="#9E9E9E"
-                    onPress={() => removeRecentSearch(item)}
-                    style={styles.removeIcon}
-                  />
+                  <TouchableOpacity onPress={() => setRecent(prev => prev.filter(r => r !== item))}>
+                    <Text style={{ fontSize: 16, color: Colors.textMuted, padding: 8 }}>✕</Text>
+                  </TouchableOpacity>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {recentSearches.length > 0 && <Divider style={styles.divider} />}
-
         {/* Trending Categories */}
         <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Trending Categories</Text>
+          <SectionHeader title="🔥 Trending Categories" />
           <View style={styles.trendingGrid}>
-            {TRENDING_CATEGORIES.map((category, index) => (
-              <TouchableOpacity key={index} style={styles.trendingCardWrapper} onPress={() => handleSearch(category.name)}>
-                <Surface style={styles.trendingCard} elevation={1}>
-                  <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '15' }]}>
-                    <MaterialCommunityIcons name={category.icon} size={28} color={theme.colors.primary} />
-                  </View>
-                  <Text variant="bodyMedium" style={styles.trendingText}>{category.name}</Text>
-                </Surface>
+            {TRENDING_CATEGORIES.map(cat => (
+              <TouchableOpacity
+                key={cat.name}
+                style={[styles.trendingCard, { borderColor: cat.color + '30', backgroundColor: Colors.white }]}
+                onPress={() => handleSearch(cat.name)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.iconCircle, { backgroundColor: cat.bg }]}>
+                  <Text style={{ fontSize: 24 }}>{cat.emoji}</Text>
+                </View>
+                <Text style={styles.trendingText}>{cat.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Suggested Tags */}
+        {/* Popular Tags */}
         <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Popular Tags</Text>
+          <SectionHeader title="Popular Tags" />
           <View style={styles.tagsContainer}>
-            {['#urgent', '#freedelivery', '#organic', '#discount', '#wholesale'].map((tag, index) => (
-              <Chip
-                key={index}
+            {['#urgent', '#freedelivery', '#organic', '#discount', '#wholesale'].map(tag => (
+              <TouchableOpacity
+                key={tag}
                 style={styles.tagChip}
                 onPress={() => handleSearch(tag)}
               >
-                {tag}
-              </Chip>
+                <Text style={styles.tagTxt}>{tag}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -121,99 +117,43 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safe: { flex: 1, backgroundColor: Colors.bgLight },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: Colors.border,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, elevation: 2,
   },
+  searchBarWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchBar: {
-    borderRadius: 12,
-    height: 52,
+    flex: 1, height: 50, borderRadius: Radius.lg,
+    backgroundColor: Colors.bgLight, borderWidth: 1.5, borderColor: Colors.border,
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontWeight: 'bold',
-    color: '#424242',
-  },
-  recentList: {
-    gap: 4,
-  },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  recentItemTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  recentItemText: {
-    color: '#424242',
-  },
-  removeIcon: {
-    margin: 0,
-  },
-  divider: {
-    marginHorizontal: -16,
-    marginBottom: 24,
-    height: 1,
-    backgroundColor: '#F0F0F0',
-  },
-  trendingGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  trendingCardWrapper: {
-    width: '31%',
-    marginBottom: 12,
-  },
+  searchInput: { fontSize: 14, color: Colors.textPrimary },
+  voiceBtnWrap: { flexShrink: 0 },
+
+  scroll: { padding: Spacing.md, paddingBottom: Spacing.xl },
+  section: { marginBottom: Spacing.lg },
+
+  recentList: { gap: 8 },
+  recentItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  recentItemTxtWrap: { flex: 1, marginLeft: 12 },
+  recentItemTxt: { fontSize: 14, color: Colors.textPrimary, fontWeight: '500' },
+
+  trendingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   trendingCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 100,
+    width: '31%', borderRadius: Radius.lg, padding: Spacing.md, alignItems: 'center',
+    borderWidth: 1.5, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, elevation: 1,
   },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  trendingText: {
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
+  iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  trendingText: { fontSize: 11, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
+
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tagChip: {
-    borderRadius: 20,
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.white, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.02, elevation: 1,
   },
+  tagTxt: { fontSize: 13, fontWeight: '600', color: Colors.bluePrimary },
 });

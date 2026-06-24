@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { storage } from './storage';
 import { API_URL } from '../config/apiConfig';
 import { showToast } from '../utils/toast';
@@ -70,6 +71,23 @@ export const apiService = {
 
     updateRole: (role: string): Promise<any> =>
       client.put('/profile/role', { role }),
+  },
+
+  upload: {
+    image: async (uri: string, type: string = 'image/jpeg', name: string = 'upload.jpg'): Promise<any> => {
+      const formData = new FormData();
+      formData.append('image', {
+        uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+        type,
+        name,
+      } as any);
+
+      return client.post('/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
   },
 
   shops: {

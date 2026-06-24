@@ -1,235 +1,193 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Text, Surface, RadioButton, Button, useTheme, Avatar, IconButton } from 'react-native-paper';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  StatusBar,
+} from 'react-native';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import Tts from 'react-native-tts';
 import { RootStackParamList } from '../navigation/types';
 import { storage, StorageKeys } from '../services/storage';
 import { showToast } from '../utils/toast';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
+import { GoOneButton } from '../components/GoOneUI';
 
 type LanguageSelectionNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LanguageSelection'>;
 
 const LANGUAGES = [
-  { code: 'ta', name: 'தமிழ்', nativeName: 'Tamil', iconLetter: 'த', color: '#E91E63' },
-  { code: 'kn', name: 'ಕನ್ನಡ', nativeName: 'Kannada', iconLetter: 'ಕ', color: '#9C27B0' },
-  { code: 'te', name: 'తెలుగు', nativeName: 'Telugu', iconLetter: 'తె', color: '#FF9800' },
-  { code: 'hi', name: 'हिन्दी', nativeName: 'Hindi', iconLetter: 'हि', color: '#4CAF50' },
-  { code: 'en', name: 'English', nativeName: 'English', iconLetter: 'E', color: '#0066FF' },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳', accent: Colors.magentaPrimary },
+  { code: 'en', name: 'English', native: 'English', flag: '🇬🇧', accent: Colors.bluePrimary },
+  { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳', accent: Colors.orangePrimary },
+  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳', accent: Colors.purplePrimary },
+  { code: 'hi', name: 'Hindi', native: 'हिंदी', flag: '🇮🇳', accent: Colors.greenPrimary },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳', accent: Colors.amberPrimary },
 ];
 
-const PRIMARY_COLOR = '#0066FF';
-
-const LanguageSelectionScreen = () => {
-  const { t, i18n } = useTranslation();
-  const theme = useTheme();
+export default function LanguageSelectionScreen() {
+  const { i18n } = useTranslation();
   const navigation = useNavigation<LanguageSelectionNavigationProp>();
-  
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('ta');
+  const [selected, setSelected] = useState('ta');
 
   useEffect(() => {
-    const savedLanguage = storage.getString(StorageKeys.LANGUAGE);
-    if (savedLanguage) {
-      setSelectedLanguage(savedLanguage);
-    }
+    const saved = storage.getString(StorageKeys.LANGUAGE);
+    if (saved) setSelected(saved);
+
+    // Initialize TTS
+    Tts.getInitStatus().then(() => {
+      Tts.setDefaultRate(0.5);
+    }).catch((err) => {
+      if (err.code === 'no_engine') {
+        Tts.requestInstallEngine();
+      }
+    });
   }, []);
 
-  const handleLanguageChange = (code: string) => {
-    setSelectedLanguage(code);
+  const playAudio = (langCode: string, langName: string) => {
+    Tts.stop();
+    // Map to TTS language codes (defaults to en-US if unsupported on device)
+    const ttsCode = langCode === 'ta' ? 'ta-IN' : 
+                    langCode === 'hi' ? 'hi-IN' : 
+                    langCode === 'te' ? 'te-IN' : 
+                    langCode === 'kn' ? 'kn-IN' : 
+                    langCode === 'ml' ? 'ml-IN' : 'en-US';
+    
+    Tts.setDefaultLanguage(ttsCode).catch(() => Tts.setDefaultLanguage('en-US'));
+    Tts.speak(langName);
+  };
+
+  const handleSelect = (code: string) => {
+    setSelected(code);
     i18n.changeLanguage(code);
-  };
-
-  const handleContinue = () => {
-    storage.set(StorageKeys.LANGUAGE, selectedLanguage);
-    showToast(`Language saved: ${selectedLanguage.toUpperCase()}`);
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.replace('Login');
+    storage.set(StorageKeys.LANGUAGE, code);
+    
+    const lang = LANGUAGES.find(l => l.code === code);
+    if (lang) {
+      playAudio(lang.code, lang.native);
+      showToast(`✓ Language: ${lang.name}`);
     }
-  };
 
-  const renderItem = ({ item }: { item: typeof LANGUAGES[0] }) => {
-    const isSelected = selectedLanguage === item.code;
-    return (
-      <TouchableOpacity onPress={() => handleLanguageChange(item.code)} activeOpacity={0.8}>
-        <Surface 
-          style={[
-            styles.languageCard, 
-            { 
-              backgroundColor: theme.colors.surface,
-              borderColor: isSelected ? PRIMARY_COLOR : theme.colors.outlineVariant,
-              borderWidth: isSelected ? 2.5 : 1,
-            }
-          ]} 
-          elevation={isSelected ? 4 : 1}
-        >
-          <View style={styles.cardContent}>
-            <View style={styles.leftSection}>
-              <Avatar.Text 
-                size={56} 
-                label={item.iconLetter} 
-                style={[styles.icon, { backgroundColor: isSelected ? item.color : theme.colors.surfaceVariant }]}
-                color={isSelected ? '#FFF' : theme.colors.onSurface}
-              />
-              <View style={styles.textContainer}>
-                <Text variant="headlineSmall" style={[styles.languageName, { color: isSelected ? PRIMARY_COLOR : theme.colors.onSurface }]}>
-                  {item.name}
-                </Text>
-                <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {item.nativeName}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.radioContainer}>
-              <RadioButton
-                value={item.code}
-                status={isSelected ? 'checked' : 'unchecked'}
-                onPress={() => handleLanguageChange(item.code)}
-                color={PRIMARY_COLOR}
-              />
-            </View>
-          </View>
-        </Surface>
-      </TouchableOpacity>
-    );
+    // Auto navigate after a short delay so the user hears the audio and sees the visual change
+    setTimeout(() => {
+      navigation.canGoBack() ? navigation.goBack() : navigation.replace('Login');
+    }, 1500);
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-      {navigation.canGoBack() && (
-        <View style={styles.headerRow}>
-          <IconButton
-            icon="arrow-left"
-            size={24}
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          />
-          <Text variant="titleLarge" style={styles.headerRowTitle}>Language</Text>
-        </View>
-      )}
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={[styles.logoContainer, { backgroundColor: PRIMARY_COLOR }]}>
-            <MaterialCommunityIcons name="translate" size={48} color="#FFFFFF" />
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+      <ScrollView contentContainerStyle={styles.container} bounces={false}>
+        {/* Hero */}
+        <View style={styles.hero}>
+          <View style={styles.heroIcon}>
+            <Text style={styles.heroEmoji}>🌐</Text>
           </View>
-          <Text variant="headlineMedium" style={styles.title}>
-            {t('auth.chooseLanguage', 'Choose Your Language')}
+          <Text style={styles.heroTitle}>Choose Language</Text>
+          <Text style={styles.heroSub}>
+            மொழி தேர்வு செய்யுங்கள்{'\n'}Select your preferred language
           </Text>
         </View>
 
-        <FlatList
-          data={LANGUAGES}
-          keyExtractor={(item) => item.code}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
-
-        <View style={styles.footer}>
-          <Button 
-            mode="contained" 
-            onPress={handleContinue} 
-            style={[styles.continueButton, { backgroundColor: PRIMARY_COLOR }]}
-            contentStyle={styles.buttonContent}
-            labelStyle={styles.buttonLabel}
-          >
-            {t('common.continue', 'Continue')}
-          </Button>
+        {/* Language Grid */}
+        <View style={styles.grid}>
+          {LANGUAGES.map(lang => {
+            const isSelected = selected === lang.code;
+            return (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.langCard,
+                  isSelected && { borderColor: lang.accent, borderWidth: 2.5, backgroundColor: lang.accent + '10' },
+                ]}
+                onPress={() => handleSelect(lang.code)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.langFlag}>{lang.flag}</Text>
+                  <TouchableOpacity 
+                    style={styles.speakerBtn} 
+                    onPress={() => playAudio(lang.code, lang.native)}
+                  >
+                    <Text style={styles.speakerIcon}>🔊</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.langNative, isSelected && { color: lang.accent }]}>
+                  {lang.native}
+                </Text>
+                <Text style={[styles.langName, isSelected && { color: lang.accent }]}>
+                  {lang.name}
+                </Text>
+                {isSelected && (
+                  <View style={[styles.checkBadge, { backgroundColor: lang.accent }]}>
+                    <Text style={styles.checkMark}>✓</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </View>
+
+        {/* Removed Continue Button as it is now automatic */}
+      </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  backButton: {
-    margin: 0,
-  },
-  headerRowTitle: {
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 30,
-    marginBottom: 20,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#0066FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  title: {
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  listContainer: {
-    paddingBottom: 20,
-  },
-  languageCard: {
-    borderRadius: 20, // larger corners
-    padding: 20,      // larger padding
-    marginBottom: 16, // more space between cards
-  },
-  cardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  icon: {
-    marginRight: 16,
-  },
-  textContainer: {
-    justifyContent: 'center',
-  },
-  languageName: {
-    fontWeight: 'bold',
-  },
-  radioContainer: {
-    justifyContent: 'center',
-  },
-  footer: {
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  continueButton: {
-    borderRadius: 16,
-  },
-  buttonContent: {
-    height: 60,
-  },
-  buttonLabel: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-});
+  safe: { flex: 1, backgroundColor: Colors.white },
+  container: { flexGrow: 1, paddingHorizontal: Spacing.md, paddingBottom: Spacing.xl },
 
-export default LanguageSelectionScreen;
+  hero: { alignItems: 'center', paddingTop: Spacing.xl, paddingBottom: Spacing.lg },
+  heroIcon: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: Colors.blueSoft,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  heroEmoji: { fontSize: 40 },
+  heroTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+  heroSub: {
+    fontSize: 13, color: Colors.textSecondary, marginTop: 8,
+    textAlign: 'center', lineHeight: 20,
+  },
+
+  grid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    gap: 12, marginBottom: Spacing.lg,
+  },
+  langCard: {
+    width: '47%',
+    backgroundColor: Colors.white,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    position: 'relative',
+  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: 6 },
+  langFlag: { fontSize: 28 },
+  speakerBtn: { padding: 4, backgroundColor: Colors.bgLight, borderRadius: 12 },
+  speakerIcon: { fontSize: 16 },
+  langName: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  langNative: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 2 },
+  checkBadge: {
+    position: 'absolute', top: 8, right: 8,
+    width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkMark: { fontSize: 11, fontWeight: '800', color: Colors.white },
+
+  footer: { paddingTop: Spacing.md },
+});

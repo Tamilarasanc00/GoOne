@@ -3,7 +3,7 @@ export type RootStackParamList = {
   LanguageSelection: undefined;
   Login: undefined;
   OtpVerification: { mobileNumber: string; mockOtp?: string };
-  RoleSelection: undefined;
+  RoleSelection: { isEdit?: boolean } | undefined;
   RetailShopListing: undefined;
   FarmerMarketplace: undefined;
   ServiceWorkerListing: undefined;

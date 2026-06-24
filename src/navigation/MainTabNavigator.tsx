@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useTheme, Badge } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -11,8 +10,10 @@ import BookingsScreen from '../screens/BookingsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import MapExploreScreen from '../screens/MapExploreScreen';
+import VoiceAssistant from '../components/VoiceAssistant';
 import { apiService } from '../services/apiService';
 import { socketClient } from '../services/socketClient';
+import Colors from '../constants/colors';
 
 export type MainTabParamList = {
   HomeTab: undefined;
@@ -25,52 +26,45 @@ export type MainTabParamList = {
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const PRIMARY_COLOR = '#0066FF';
+const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
+  HomeTab: { active: '🏠', inactive: '🏠' },
+  SearchTab: { active: '🔍', inactive: '🔍' },
+  MapExploreTab: { active: '🗺️', inactive: '🗺️' },
+  BookingsTab: { active: '📅', inactive: '📅' },
+  NotificationsTab: { active: '🔔', inactive: '🔔' },
+  ProfileTab: { active: '👤', inactive: '👤' },
+};
 
-// Badge icon wrapper for Notifications tab
-function NotificationTabIcon({
-  focused,
-  color,
-  size,
-}: {
-  focused: boolean;
-  color: string;
-  size: number;
-}) {
+const TAB_LABELS: Record<string, string> = {
+  HomeTab: 'Home',
+  SearchTab: 'Search',
+  MapExploreTab: 'Map',
+  BookingsTab: 'Bookings',
+  NotificationsTab: 'Alerts',
+  ProfileTab: 'Profile',
+};
+
+function NotificationTabIcon({ focused }: { focused: boolean }) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchUnread = useCallback(async () => {
     try {
       const res = await apiService.notifications.getUnreadCount();
-      if (res.success && typeof res.count === 'number') {
-        setUnreadCount(res.count);
-      }
-    } catch {
-      // silently ignore
-    }
+      if (res.success && typeof res.count === 'number') setUnreadCount(res.count);
+    } catch {}
   }, []);
 
-  // Fetch on mount and when tab gets focused
   useEffect(() => {
     socketClient.connect();
     fetchUnread();
-
-    // Re-fetch when a new notification arrives via socket
-    const handleNewNotification = () => {
-      setUnreadCount((c) => c + 1);
-    };
-
-    socketClient.on('notification', handleNewNotification);
-    return () => {
-      socketClient.off('notification', handleNewNotification);
-    };
+    const handler = () => setUnreadCount(c => c + 1);
+    socketClient.on('notification', handler);
+    return () => socketClient.off('notification', handler);
   }, [fetchUnread]);
 
-  // Also refresh when the tab is focused (user tapped it => just read them)
   useFocusEffect(
     useCallback(() => {
       if (focused) {
-        // Short delay to let NotificationsScreen mark them read first
         const t = setTimeout(fetchUnread, 800);
         return () => clearTimeout(t);
       }
@@ -78,105 +72,85 @@ function NotificationTabIcon({
   );
 
   return (
-    <View style={styles.iconWrapper}>
-      <MaterialCommunityIcons
-        name={focused ? 'bell' : 'bell-outline'}
-        size={size}
-        color={color}
-      />
+    <View style={styles.iconWrap}>
+      <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>🔔</Text>
       {unreadCount > 0 && (
-        <Badge style={styles.tabBadge} size={16}>
-          {unreadCount > 99 ? '99+' : unreadCount}
-        </Badge>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+        </View>
       )}
     </View>
   );
 }
 
 export default function MainTabNavigator() {
-  const theme = useTheme();
-
   return (
+    <>
     <Tab.Navigator
       initialRouteName="HomeTab"
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused }) => {
           if (route.name === 'NotificationsTab') {
-            return (
-              <NotificationTabIcon focused={focused} color={color} size={size} />
-            );
+            return <NotificationTabIcon focused={focused} />;
           }
-
-          let iconName = 'home';
-          if (route.name === 'HomeTab') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'SearchTab') {
-            iconName = 'magnify';
-          } else if (route.name === 'MapExploreTab') {
-            iconName = focused ? 'map-marker-radius' : 'map-marker-radius-outline';
-          } else if (route.name === 'BookingsTab') {
-            iconName = focused ? 'calendar-text' : 'calendar-text-outline';
-          } else if (route.name === 'ProfileTab') {
-            iconName = focused ? 'account' : 'account-outline';
-          }
-
-          return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+          return (
+            <View style={styles.iconWrap}>
+              <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>
+                {TAB_ICONS[route.name]?.active || '●'}
+              </Text>
+            </View>
+          );
         },
-        tabBarActiveTintColor: PRIMARY_COLOR,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
-        tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.outlineVariant,
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
+        tabBarLabel: ({ focused }) => (
+          <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
+            {TAB_LABELS[route.name]}
+          </Text>
+        ),
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabItem,
       })}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="SearchTab" component={SearchScreen} options={{ tabBarLabel: 'Search' }} />
-      <Tab.Screen
-        name="MapExploreTab"
-        component={MapExploreScreen}
-        options={{ tabBarLabel: 'Map' }}
-      />
-      <Tab.Screen
-        name="BookingsTab"
-        component={BookingsScreen}
-        options={{ tabBarLabel: 'Bookings' }}
-      />
-      <Tab.Screen
-        name="NotificationsTab"
-        component={NotificationsScreen}
-        options={{ tabBarLabel: 'Alerts' }}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileScreen}
-        options={{ tabBarLabel: 'Profile' }}
-      />
+      <Tab.Screen name="HomeTab" component={HomeScreen} />
+      <Tab.Screen name="SearchTab" component={SearchScreen} />
+      <Tab.Screen name="MapExploreTab" component={MapExploreScreen} />
+      <Tab.Screen name="BookingsTab" component={BookingsScreen} />
+      <Tab.Screen name="NotificationsTab" component={NotificationsScreen} />
+      <Tab.Screen name="ProfileTab" component={ProfileScreen} />
     </Tab.Navigator>
+    <VoiceAssistant />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  iconWrapper: {
+  tabBar: {
+    backgroundColor: Colors.white,
+    borderTopWidth: 0,
+    height: Platform.OS === 'ios' ? 88 : 68,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    paddingTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  tabItem: { alignItems: 'center', justifyContent: 'center' },
+  iconWrap: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -10,
-    backgroundColor: '#EF4444',
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: 'bold',
+  tabIcon: { fontSize: 22, opacity: 0.45 },
+  tabIconActive: { opacity: 1 },
+  tabLabel: { fontSize: 10, fontWeight: '600', color: Colors.textMuted, marginTop: 2 },
+  tabLabelActive: { color: Colors.bluePrimary, fontWeight: '800' },
+  badge: {
+    position: 'absolute', top: -4, right: -8,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: Colors.redPrimary,
+    alignItems: 'center', justifyContent: 'center',
   },
+  badgeText: { fontSize: 8, color: Colors.white, fontWeight: '800' },
 });

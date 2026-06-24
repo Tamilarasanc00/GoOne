@@ -1,46 +1,54 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Image, Animated, Dimensions } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-
 import { storage, StorageKeys } from '../services/storage';
-
 import { useAppDispatch } from '../redux/hooks';
 import { checkProfileStatus, setProfileRole } from '../redux/slices/profileSlice';
 import { setRole } from '../redux/slices/appSlice';
+import Colors from '../constants/colors';
 
 type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
-
 const { width } = Dimensions.get('window');
 
 export default function SplashScreen() {
-  const theme = useTheme();
   const navigation = useNavigation<SplashScreenNavigationProp>();
   const dispatch = useAppDispatch();
-  
-  // Animation values
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
-    // Start animations
+    // Logo entrance animation
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 20,
-        friction: 7,
-        useNativeDriver: true,
-      })
+      Animated.timing(fadeAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 18, friction: 7, useNativeDriver: true }),
     ]).start();
 
-    // Check auth and auto-login after 2.5 seconds
+    // Loading dots animation
+    const dotLoop = Animated.loop(
+      Animated.stagger(250, [
+        Animated.sequence([
+          Animated.timing(dot1, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(dot1, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(dot2, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(dot2, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(dot3, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(dot3, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    dotLoop.start();
+
     const timer = setTimeout(async () => {
       const token = storage.getString('APP_JWT_TOKEN');
       const hasSelectedLanguage = storage.getString(StorageKeys.LANGUAGE) !== undefined;
@@ -52,20 +60,16 @@ export default function SplashScreen() {
 
       if (token) {
         try {
-          // Verify user auth & profile status on backend
           const resultAction = await dispatch(checkProfileStatus());
-          
           if (checkProfileStatus.fulfilled.match(resultAction)) {
             const { is_profile_completed, role: backendRole } = resultAction.payload;
             const savedRole = storage.getString(StorageKeys.USER_ROLE);
             const role = backendRole || savedRole;
-
             if (role) {
               storage.set(StorageKeys.USER_ROLE, role);
               dispatch(setRole(role));
               dispatch(setProfileRole(role));
             }
-            
             if (is_profile_completed) {
               if (role === 'Retailer' || role === 'retail_shop') {
                 navigation.replace('RetailerDashboard');
@@ -73,12 +77,7 @@ export default function SplashScreen() {
                 navigation.replace('MainTabs');
               }
             } else {
-              // Profile not complete, route to setup if role chosen, else role selection
-              if (role) {
-                navigation.replace('CreateProfile');
-              } else {
-                navigation.replace('RoleSelection');
-              }
+              navigation.replace(role ? 'CreateProfile' : 'RoleSelection');
             }
             return;
           }
@@ -87,32 +86,46 @@ export default function SplashScreen() {
         }
       }
 
-      // Default to Login Screen if not logged in or validation fails
       navigation.replace('Login');
-    }, 2500);
+    }, 2800);
 
-    return () => clearTimeout(timer);
-  }, [fadeAnim, scaleAnim, navigation, dispatch]);
+    return () => {
+      clearTimeout(timer);
+      dotLoop.stop();
+    };
+  }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
-      <Animated.View 
-        style={[
-          styles.logoContainer, 
-          { 
-            opacity: fadeAnim, 
-            transform: [{ scale: scaleAnim }] 
-          }
-        ]}
-      >
-        <Image 
-          source={require('../assets/images/logo.png.png')} 
-          style={styles.logo} 
-          resizeMode="contain" 
-        />
-        <Text variant="titleMedium" style={styles.tagline}>
-          Home & Community Hub
-        </Text>
+    <View style={styles.container}>
+      {/* Background gradient simulation via layered views */}
+      <View style={[StyleSheet.absoluteFill, styles.bgBlue]} />
+      <View style={[StyleSheet.absoluteFill, styles.bgPurple]} />
+
+      {/* Decorative circles */}
+      <View style={[styles.circle, { width: 320, height: 320, top: -100, right: -80 }]} />
+      <View style={[styles.circle, { width: 200, height: 200, bottom: -40, left: -60 }]} />
+      <View style={[styles.circle, { width: 140, height: 140, top: '40%', left: '20%' }]} />
+
+      {/* Logo + Brand */}
+      <Animated.View style={[styles.logoWrap, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+        <View style={styles.logoCard}>
+          <Image
+            source={require('../assets/images/logo.png.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.tagline}>Home & Community Hub</Text>
+      </Animated.View>
+
+      {/* Tagline & loading dots */}
+      <Animated.View style={[styles.bottomWrap, { opacity: fadeAnim }]}>
+        <Text style={styles.connectText}>Connecting Rural India</Text>
+        <View style={styles.dotsRow}>
+          <Animated.View style={[styles.dot, styles.dotActive, { opacity: dot1 }]} />
+          <Animated.View style={[styles.dot, { opacity: dot2 }]} />
+          <Animated.View style={[styles.dot, { opacity: dot3 }]} />
+        </View>
       </Animated.View>
     </View>
   );
@@ -121,22 +134,75 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+  bgBlue: {
+    backgroundColor: Colors.bluePrimary,
+  },
+  bgPurple: {
+    backgroundColor: Colors.purplePrimary,
+    opacity: 0.55,
+  },
+  circle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  logoWrap: {
     alignItems: 'center',
   },
-  logoContainer: {
+  logoCard: {
+    width: 160,
+    height: 160,
+    borderRadius: 44,
+    backgroundColor: Colors.white,
     alignItems: 'center',
-    width: width * 0.8,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.35,
+    shadowRadius: 30,
+    elevation: 20,
+    marginBottom: 24,
+    padding: 10,
   },
   logo: {
     width: '100%',
-    height: 180,
-    marginBottom: 16,
+    height: '100%',
   },
   tagline: {
-    fontWeight: 'bold',
-    color: '#757575',
-    letterSpacing: 1,
-    marginTop: -20, // Adjust spacing from logo image
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 0.5,
+  },
+  bottomWrap: {
+    position: 'absolute',
+    bottom: 64,
+    alignItems: 'center',
+  },
+  connectText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.6)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: 16,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  dotActive: {
+    width: 24,
+    borderRadius: 4,
+    backgroundColor: Colors.white,
   },
 });
