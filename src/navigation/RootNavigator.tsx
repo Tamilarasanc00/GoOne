@@ -29,6 +29,7 @@ import SubscriptionScreen from '../screens/SubscriptionScreen';
 import CreateProfileScreen from '../screens/CreateProfileScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
 import AddJobScreen from '../screens/AddJobScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import { storage, StorageKeys } from '../services/storage';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -72,6 +73,7 @@ export default function RootNavigator() {
       <Stack.Screen name="CreateProfile" component={CreateProfileScreen} />
       <Stack.Screen name="EmployerDashboard" component={EmployerDashboardScreen} />
       <Stack.Screen name="AddJob" component={AddJobScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 }

@@ -12,6 +12,24 @@ import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
 import { SectionHeader, StatusChip } from '../components/GoOneUI';
 
+const RENTAL_EMOJIS: Record<string, string> = {
+  tractor: '🚜', harvester: '🚜', bike: '🏉️', bicycle: '🚲', motorcycle: '🏉️',
+  truck: '🚚', 'mini truck': '🚚', auto: '🚛', van: '🚐',
+  jcb: '🏗️', excavator: '🏗️', crane: '🏗️',
+  pump: '💧', 'water pump': '💧', generator: '⚡',
+  drill: '🔧', chainsaw: '🔪', cutter: '✂️',
+  tools: '🛠️', 'power tools': '🛠️',
+  'water tanker': '🚚',
+};
+
+function getRentalEmoji(title: string, category?: string): string {
+  const text = ((title || '') + ' ' + (category || '')).toLowerCase();
+  for (const key of Object.keys(RENTAL_EMOJIS)) {
+    if (text.includes(key)) return RENTAL_EMOJIS[key];
+  }
+  return '🚜';
+}
+
 type RentalDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function RentalDashboardScreen() {
@@ -62,7 +80,27 @@ export default function RentalDashboardScreen() {
         <View style={[styles.circle, { width: 120, height: 120, bottom: -20, left: 40 }]} />
 
         <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })}
+            style={styles.homeBtn}
+          >
+            <Text style={{ fontSize: 18 }}>🏠</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.screenTitle}>Rental Dashboard</Text>
+          
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.navigate('Notifications' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 20 }}>🔔</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.shopProfileRow}>
+          <View style={styles.shopProfileLeft}>
             <TouchableOpacity 
               activeOpacity={0.7} 
               onPress={() => navigation.navigate('Profile')}
@@ -72,7 +110,7 @@ export default function RentalDashboardScreen() {
             </TouchableOpacity>
             <View>
               <Text style={styles.ownerName}>{ownerName}</Text>
-              <Text style={styles.ownerSub}>Rental Dashboard</Text>
+              <Text style={styles.ownerSub}>View Profile & Settings</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('CreateProfile', { isEdit: true })}>
@@ -97,7 +135,7 @@ export default function RentalDashboardScreen() {
         <SectionHeader title="Quick Actions" />
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.amberSoft }]} onPress={() => navigation.navigate('AddRental')}>
-            <Text style={{ fontSize: 28 }}>🚜</Text>
+            <Text style={{ fontSize: 28 }}>📋</Text>
             <Text style={[styles.actionLabel, { color: Colors.amberPrimary }]}>Add Item</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.greenSoft }]} onPress={() => showToast('Calendar coming soon')}>
@@ -108,9 +146,9 @@ export default function RentalDashboardScreen() {
             <Text style={{ fontSize: 28 }}>✏️</Text>
             <Text style={[styles.actionLabel, { color: Colors.bluePrimary }]}>Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.purpleSoft }]} onPress={() => navigation.navigate('Profile')}>
-            <Text style={{ fontSize: 28 }}>👤</Text>
-            <Text style={[styles.actionLabel, { color: Colors.purplePrimary }]}>Settings & Profile</Text>
+          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.purpleSoft }]} onPress={() => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })}>
+            <Text style={{ fontSize: 28 }}>🏠</Text>
+            <Text style={[styles.actionLabel, { color: Colors.purplePrimary }]}>Go Home</Text>
           </TouchableOpacity>
         </View>
 
@@ -137,7 +175,7 @@ export default function RentalDashboardScreen() {
         ) : (
           rentals.map(item => (
             <View key={item.id} style={styles.rentalCard}>
-              <View style={styles.rentalIcon}><Text style={{ fontSize: 30 }}>🚜</Text></View>
+              <View style={styles.rentalIcon}><Text style={{ fontSize: 30 }}>{getRentalEmoji(item.title, item.category)}</Text></View>
               <View style={styles.rentalInfo}>
                 <Text style={styles.rentalName}>{item.title}</Text>
                 <Text style={styles.rentalPrice}>₹{parseFloat(item.price_per_day).toFixed(0)}/day</Text>
@@ -167,12 +205,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden', position: 'relative',
   },
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarTxt: { fontSize: 24 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg, zIndex: 1 },
+  screenTitle: { fontSize: 18, fontWeight: '800', color: Colors.white },
+  shopProfileRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
+  shopProfileLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  homeBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  notifBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatar: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarTxt: { fontSize: 22 },
   ownerName: { fontSize: 16, fontWeight: '800', color: Colors.white },
-  ownerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  ownerSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   editBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Radius.full, paddingHorizontal: 12, paddingVertical: 6 },
   editBtnTxt: { color: Colors.white, fontWeight: '700', fontSize: 12 },
   statsRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: Radius.lg, padding: Spacing.md, justifyContent: 'space-around', zIndex: 1 },

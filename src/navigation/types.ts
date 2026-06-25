@@ -27,4 +27,5 @@ export type RootStackParamList = {
   EmployerDashboard: undefined;
   AddJob: { jobId?: string } | undefined;
   CreateProfile: { isEdit?: boolean } | undefined;
+  Notifications: undefined;
 };

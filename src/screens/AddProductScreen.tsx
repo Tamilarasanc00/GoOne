@@ -39,6 +39,14 @@ const CATEGORIES_BY_ROLE: Record<string, CategoryItem[]> = {
     {
       name: 'Home Appliances',
       subcategories: ['Fan', 'Electric Kettle', 'Mixer Grinder', 'Iron Box']
+    },
+    {
+      name: 'Hardware',
+      subcategories: ['Tools', 'Pipes', 'Paint', 'Cement', 'Electrical Fittings']
+    },
+    {
+      name: 'Pharmacy',
+      subcategories: ['Medicines', 'First Aid', 'Supplements', 'Baby Care']
     }
   ],
   'Farmer': [
@@ -57,6 +65,10 @@ const CATEGORIES_BY_ROLE: Record<string, CategoryItem[]> = {
     {
       name: 'Dairy & Poultry',
       subcategories: ['Milk', 'Fresh Eggs', 'Butter', 'Organic Ghee']
+    },
+    {
+      name: 'Seeds',
+      subcategories: ['Vegetable Seeds', 'Paddy Seeds', 'Fruit Seeds', 'Flower Seeds']
     }
   ],
   'Rental Owner': [
@@ -76,7 +88,7 @@ const CATEGORIES_BY_ROLE: Record<string, CategoryItem[]> = {
   'Service Worker': [
     {
       name: 'Construction',
-      subcategories: ['Plumbing', 'Carpentry', 'Electrical', 'Painting']
+      subcategories: ['Plumbing', 'Carpentry', 'Electrical', 'Painting', 'Mason', 'AC Repair', 'Welder']
     },
     {
       name: 'Domestic',
@@ -91,10 +103,10 @@ const CATEGORIES_BY_ROLE: Record<string, CategoryItem[]> = {
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   'Clothing (Cloth)': '👕',
-  'Electronics': '⚡',
+  'Electronics': '📱',
   'Groceries': '🛒',
   'Footwear': '👟',
-  'Home Appliances': '🏠',
+  'Home Appliances': '⚙️',
   'Vegetables': '🥦',
   'Fruits': '🍎',
   'Grains': '🌾',
@@ -104,7 +116,9 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'Vehicles': '🚚',
   'Construction': '🪚',
   'Domestic': '🧹',
-  'Automotive': '🚗'
+  'Hardware': '🔧',
+  'Pharmacy': '💊',
+  'Seeds': '🌱',
 };
 
 export default function AddProductScreen() {

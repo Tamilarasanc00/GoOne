@@ -29,7 +29,6 @@ const QUICK_ACTIONS = [
   { label: 'Add Offer', emoji: '🎁', screen: 'AddOffer', color: Colors.orangePrimary },
   { label: 'Edit Shop', emoji: '✏️', screen: 'CreateProfile', color: Colors.purplePrimary },
   { label: 'View Orders', emoji: '📋', screen: null, color: Colors.greenPrimary },
-  { label: 'Settings & Profile', emoji: '👤', screen: 'Profile', color: Colors.blueDeep },
 ];
 
 export default function RetailerDashboardScreen() {
@@ -93,7 +92,27 @@ export default function RetailerDashboardScreen() {
         <View style={[styles.circle, { width: 120, height: 120, bottom: -20, left: 40 }]} />
 
         <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })}
+            style={styles.homeBtn}
+          >
+            <Text style={{ fontSize: 18 }}>🏠</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.screenTitle}>Retailer Dashboard</Text>
+          
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.navigate('Notifications' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 20 }}>🔔</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.shopProfileRow}>
+          <View style={styles.shopProfileLeft}>
             <TouchableOpacity 
               activeOpacity={0.7} 
               onPress={() => navigation.navigate('Profile')}
@@ -112,9 +131,10 @@ export default function RetailerDashboardScreen() {
               }}
             >
               <Text style={styles.shopName}>{shopName} 👁️</Text>
-              <Text style={styles.shopSub}>Retailer Dashboard • View Shop</Text>
+              <Text style={styles.shopSub}>Tap to view Shop</Text>
             </TouchableOpacity>
           </View>
+          
           <View style={styles.openToggle}>
             <Text style={styles.openLabel}>{isOpen ? '● Open' : '● Closed'}</Text>
             <Switch
@@ -298,17 +318,29 @@ const styles = StyleSheet.create({
     position: 'absolute', borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg, zIndex: 1 },
+  screenTitle: { fontSize: 18, fontWeight: '800', color: Colors.white },
+  shopProfileRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
+  shopProfileLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  homeBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  notifBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   avatar: {
-    width: 50, height: 50, borderRadius: 25,
+    width: 46, height: 46, borderRadius: 23,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarTxt: { fontSize: 24 },
+  avatarTxt: { fontSize: 22 },
   shopName: { fontSize: 16, fontWeight: '800', color: Colors.white },
-  shopSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
-  openToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 1 },
+  shopSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  openToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   openLabel: { fontSize: 11, fontWeight: '700', color: Colors.white },
 
   statsRow: {

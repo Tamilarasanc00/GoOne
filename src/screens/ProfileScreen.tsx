@@ -159,6 +159,12 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>ACCOUNT</Text>
           <View style={styles.menuGroup}>
             <MenuItem emoji="✏️" title="Edit Profile" subtitle="Update your details" onPress={() => navigation.navigate('CreateProfile', { isEdit: true })} />
+            {normalizedRole !== 'customer' && (
+              <>
+                <View style={styles.divider} />
+                <MenuItem emoji={roleEmoji} title={`Go to ${roleLabel} Dashboard`} subtitle="Manage your business" onPress={goToDashboard} />
+              </>
+            )}
             {normalizedRole === 'retail_shop' && profile?.id && (
               <>
                 <View style={styles.divider} />
@@ -185,8 +191,8 @@ export default function ProfileScreen() {
             <MenuItem emoji="🌐" title="Language" subtitle="தமிழ் · Tamil" onPress={() => navigation.navigate('LanguageSelection')} />
           </View>
 
-          {/* Activity */}
-          {normalizedRole === 'customer' ? (
+          {/* Activity — only shown to customers */}
+          {normalizedRole === 'customer' && (
             <>
               <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
               <View style={styles.menuGroup}>
@@ -195,13 +201,6 @@ export default function ProfileScreen() {
                 <MenuItem emoji="📅" title="My Bookings" subtitle="Active and past bookings" onPress={() => navigation.navigate('MainTabs')} />
                 <View style={styles.divider} />
                 <MenuItem emoji="❤️" title="Saved" subtitle="Favorites shops & workers" onPress={() => showToast('Coming soon!')} />
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
-              <View style={styles.menuGroup}>
-                <MenuItem emoji={roleEmoji} title="My Dashboard" subtitle={`${roleLabel} dashboard`} onPress={goToDashboard} />
               </View>
             </>
           )}

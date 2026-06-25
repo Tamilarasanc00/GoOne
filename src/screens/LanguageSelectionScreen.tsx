@@ -72,11 +72,12 @@ export default function LanguageSelectionScreen() {
       playAudio(lang.code, lang.native);
       showToast(`✓ Language: ${lang.name}`);
     }
+    // No auto-navigate — user must tap Continue
+  };
 
-    // Auto navigate after a short delay so the user hears the audio and sees the visual change
-    setTimeout(() => {
-      navigation.canGoBack() ? navigation.goBack() : navigation.replace('Login');
-    }, 1500);
+  const handleContinue = () => {
+    Tts.stop();
+    navigation.canGoBack() ? navigation.goBack() : navigation.replace('Login');
   };
 
   return (
@@ -112,7 +113,11 @@ export default function LanguageSelectionScreen() {
                   <Text style={styles.langFlag}>{lang.flag}</Text>
                   <TouchableOpacity 
                     style={styles.speakerBtn} 
-                    onPress={() => playAudio(lang.code, lang.native)}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      playAudio(lang.code, lang.native);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Text style={styles.speakerIcon}>🔊</Text>
                   </TouchableOpacity>
@@ -133,7 +138,18 @@ export default function LanguageSelectionScreen() {
           })}
         </View>
 
-        {/* Removed Continue Button as it is now automatic */}
+        {/* Continue Button */}
+        <TouchableOpacity
+          style={[
+            styles.continueBtn,
+            { backgroundColor: LANGUAGES.find(l => l.code === selected)?.accent || Colors.bluePrimary }
+          ]}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.continueTxt}>✓ Continue in {LANGUAGES.find(l => l.code === selected)?.name || 'Selected Language'}</Text>
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -188,6 +204,25 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   checkMark: { fontSize: 11, fontWeight: '800', color: Colors.white },
+
+  continueBtn: {
+    borderRadius: Radius.full,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  continueTxt: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.white,
+    letterSpacing: 0.3,
+  },
 
   footer: { paddingTop: Spacing.md },
 });

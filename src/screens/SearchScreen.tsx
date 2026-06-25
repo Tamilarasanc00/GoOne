@@ -13,7 +13,7 @@ const TRENDING_CATEGORIES = [
   { name: 'Hardware', emoji: '🔧', color: Colors.bluePrimary, bg: Colors.blueSoft },
   { name: 'Fertilizers', emoji: '🌱', color: Colors.greenPrimary, bg: Colors.greenSoft },
   { name: 'Tractors', emoji: '🚜', color: Colors.amberPrimary, bg: Colors.amberSoft },
-  { name: 'Construction', emoji: '👷', color: Colors.orangePrimary, bg: Colors.orangeSoft },
+  { name: 'Construction', emoji: '🏗️', color: Colors.orangePrimary, bg: Colors.orangeSoft },
   { name: 'Groceries', emoji: '🛒', color: Colors.purplePrimary, bg: Colors.purpleSoft },
 ];
 

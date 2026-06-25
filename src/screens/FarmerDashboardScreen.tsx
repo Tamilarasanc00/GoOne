@@ -15,11 +15,29 @@ import { SectionHeader, StatusChip } from '../components/GoOneUI';
 type FarmerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const MARKET_RATES = [
-  { name: 'Rice (Ponni)', price: '₹28/kg', trend: '↑', up: true },
-  { name: 'Tomato', price: '₹18/kg', trend: '↓', up: false },
-  { name: 'Onion', price: '₹22/kg', trend: '↑', up: true },
-  { name: 'Maize', price: '₹19/kg', trend: '↑', up: true },
+  { name: 'Tomato', price: '₹28/kg', trend: '▲ +5%', up: true },
+  { name: 'Onion', price: '₹22/kg', trend: '▼ -2%', up: false },
+  { name: 'Potato', price: '₹18/kg', trend: '▲ +1%', up: true },
+  { name: 'Rice', price: '₹42/kg', trend: '→ 0%', up: true },
 ];
+
+const CROP_EMOJIS: Record<string, string> = {
+  tomato: '🍅', onion: '🧅', potato: '🥔', carrot: '🥕', brinjal: '🍆',
+  rice: '🍚', wheat: '🌾', maize: '🌽', ragi: '🌾',
+  banana: '🍌', mango: '🥭', apple: '🍎', orange: '🍊', papaya: '🍑', guava: '🍏',
+  milk: '🥛', ghee: '🫙', egg: '🥚',
+  cotton: '🧶', sugarcane: '🌿', groundnut: '🥜',
+  chilli: '🌶️', beans: '🫘', drumstick: '🌿',
+};
+
+function getCropEmoji(name: string): string {
+  if (!name) return '🌿';
+  const lower = name.toLowerCase();
+  for (const key of Object.keys(CROP_EMOJIS)) {
+    if (lower.includes(key)) return CROP_EMOJIS[key];
+  }
+  return '🌿';
+}
 
 export default function FarmerDashboardScreen() {
   const navigation = useNavigation<FarmerDashboardNavigationProp>();
@@ -67,7 +85,27 @@ export default function FarmerDashboardScreen() {
         <View style={[styles.circle, { width: 120, height: 120, bottom: -20, left: 40 }]} />
 
         <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })}
+            style={styles.homeBtn}
+          >
+            <Text style={{ fontSize: 18 }}>🏠</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.screenTitle}>Farmer Dashboard</Text>
+          
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.navigate('Notifications' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 20 }}>🔔</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.shopProfileRow}>
+          <View style={styles.shopProfileLeft}>
             <TouchableOpacity 
               activeOpacity={0.7} 
               onPress={() => navigation.navigate('Profile')}
@@ -77,7 +115,7 @@ export default function FarmerDashboardScreen() {
             </TouchableOpacity>
             <View>
               <Text style={styles.farmName}>{profile?.farm_name || user?.name || 'My Farm'}</Text>
-              <Text style={styles.farmSub}>Farmer Dashboard</Text>
+              <Text style={styles.farmSub}>View Profile & Settings</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('CreateProfile', { isEdit: true })}>
@@ -121,12 +159,12 @@ export default function FarmerDashboardScreen() {
             <Text style={[styles.actionLabel, { color: Colors.bluePrimary }]}>Edit Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.purpleSoft }]} onPress={() => navigation.navigate('FarmerMarketplace')}>
-            <Text style={{ fontSize: 28 }}>🛒</Text>
+            <Text style={{ fontSize: 28 }}>🛍️</Text>
             <Text style={[styles.actionLabel, { color: Colors.purplePrimary }]}>Marketplace</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.blueSoft }]} onPress={() => navigation.navigate('Profile')}>
-            <Text style={{ fontSize: 28 }}>👤</Text>
-            <Text style={[styles.actionLabel, { color: Colors.bluePrimary }]}>Settings & Profile</Text>
+          <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.amberSoft }]} onPress={() => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })}>
+            <Text style={{ fontSize: 28 }}>🏠</Text>
+            <Text style={[styles.actionLabel, { color: Colors.amberPrimary }]}>Go Home</Text>
           </TouchableOpacity>
         </View>
 
@@ -153,7 +191,7 @@ export default function FarmerDashboardScreen() {
         ) : (
           crops.map(item => (
             <View key={item.id} style={styles.cropCard}>
-              <View style={styles.cropIcon}><Text style={{ fontSize: 30 }}>🌽</Text></View>
+              <View style={styles.cropIcon}><Text style={{ fontSize: 30 }}>{getCropEmoji(item.crop_name)}</Text></View>
               <View style={styles.cropInfo}>
                 <Text style={styles.cropName}>{item.crop_name}</Text>
                 <Text style={styles.cropPrice}>₹{parseFloat(item.price_per_kg).toFixed(0)}/kg</Text>
@@ -183,12 +221,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden', position: 'relative',
   },
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarTxt: { fontSize: 24 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg, zIndex: 1 },
+  screenTitle: { fontSize: 18, fontWeight: '800', color: Colors.white },
+  shopProfileRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
+  shopProfileLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  homeBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  notifBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatar: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarTxt: { fontSize: 22 },
   farmName: { fontSize: 16, fontWeight: '800', color: Colors.white },
-  farmSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  farmSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   editBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Radius.full, paddingHorizontal: 12, paddingVertical: 6 },
   editBtnTxt: { color: Colors.white, fontWeight: '700', fontSize: 12 },
   statsRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: Radius.lg, padding: Spacing.md, justifyContent: 'space-around', zIndex: 1 },

@@ -29,7 +29,7 @@ type MapMarker = {
 const FILTERS: { name: FilterType; emoji: string }[] = [
   { name: 'All', emoji: '🗺️' },
   { name: 'Shops', emoji: '🏪' },
-  { name: 'Workers', emoji: '👷' },
+  { name: 'Workers', emoji: '🔧' },
   { name: 'Rentals', emoji: '🚜' },
   { name: 'Farmers', emoji: '🌾' },
 ];
@@ -90,7 +90,7 @@ export default function MapExploreScreen() {
             id: `worker_${w.id}`, type: 'Workers', name: w.name,
             lat: parseCoord(w.latitude, coords.latitude),
             lng: parseCoord(w.longitude, coords.longitude),
-            emoji: '👷', color: Colors.purplePrimary
+            emoji: '🔧', color: Colors.purplePrimary
           });
         });
       }

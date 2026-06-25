@@ -10,6 +10,26 @@ import { StatusChip } from '../components/GoOneUI';
 
 type TabStatus = 'Pending' | 'Accepted' | 'Completed' | 'Cancelled';
 const TABS: TabStatus[] = ['Pending', 'Accepted', 'Completed', 'Cancelled'];
+const TAB_EMOJIS: Record<TabStatus, string> = {
+  Pending: '⏳',
+  Accepted: '✅',
+  Completed: '🎉',
+  Cancelled: '❌',
+};
+
+function getServiceEmoji(service: string): string {
+  if (!service) return '📋';
+  const s = service.toLowerCase();
+  if (s.includes('pipe') || s.includes('plumb')) return '🔧';
+  if (s.includes('wiring') || s.includes('electr')) return '⚡';
+  if (s.includes('plough') || s.includes('farm') || s.includes('tractor')) return '🚜';
+  if (s.includes('clean')) return '🧹';
+  if (s.includes('paint')) return '🎨';
+  if (s.includes('carpentr') || s.includes('wood')) return '🪵';
+  if (s.includes('mason') || s.includes('cement')) return '🏗️';
+  if (s.includes('cook')) return '🍳';
+  return '📋';
+}
 
 export default function BookingsScreen() {
   const [activeTab, setActiveTab] = useState<TabStatus>('Pending');
@@ -65,6 +85,7 @@ export default function BookingsScreen() {
           const isActive = activeTab === tab;
           return (
             <TouchableOpacity key={tab} style={[styles.tabBtn, isActive && styles.tabBtnActive]} onPress={() => setActiveTab(tab)}>
+              <Text style={{ fontSize: 14 }}>{TAB_EMOJIS[tab]}</Text>
               <Text style={[styles.tabTxt, isActive && styles.tabTxtActive]}>{tab}</Text>
             </TouchableOpacity>
           );
@@ -82,7 +103,7 @@ export default function BookingsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.bluePrimary]} />}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <Text style={{ fontSize: 64 }}>📅</Text>
+              <Text style={{ fontSize: 64 }}>{TAB_EMOJIS[activeTab]}</Text>
               <Text style={styles.emptyTxt}>No {activeTab.toLowerCase()} bookings</Text>
             </View>
           }
@@ -90,7 +111,7 @@ export default function BookingsScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.serviceIconWrap}>
-                  <Text style={{ fontSize: 24 }}>{item.service?.includes('Pipe') ? '🔧' : item.service?.includes('Wiring') ? '⚡' : '🚜'}</Text>
+                  <Text style={{ fontSize: 24 }}>{getServiceEmoji(item.service)}</Text>
                 </View>
                 <View style={styles.cardHeaderTxt}>
                   <Text style={styles.serviceName}>{item.service || 'Service'}</Text>

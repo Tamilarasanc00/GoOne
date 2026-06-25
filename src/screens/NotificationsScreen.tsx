@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, SectionList, TouchableOpacity, StatusBar } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { apiService } from '../services/apiService';
 import { socketClient } from '../services/socketClient';
 import Colors from '../constants/colors';
@@ -34,6 +35,7 @@ function getTypeConfig(type: string) {
 }
 
 export default function NotificationsScreen() {
+  const navigation = useNavigation();
   const [sections, setSections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -107,11 +109,16 @@ export default function NotificationsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={{ fontSize: 24 }}>←</Text>
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Notifications</Text>
           {unreadCount > 0 && (
             <Text style={styles.headerCount}>{unreadCount} unread</Text>
           )}
+          </View>
         </View>
         <View style={styles.headerRight}>
           {unreadCount > 0 && (
@@ -200,6 +207,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, elevation: 2,
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backBtn: { padding: 4 },
   headerTitle: { fontSize: 22, fontWeight: '900', color: Colors.textPrimary },
   headerCount: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },

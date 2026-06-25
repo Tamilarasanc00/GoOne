@@ -20,6 +20,22 @@ const MOCK_JOB_REQUESTS = [
   { id: 3, title: 'AC Service', location: 'Namakkal', rate: '₹600', urgent: false },
 ];
 
+function getJobEmoji(title: string): string {
+  const t = (title || '').toLowerCase();
+  if (t.includes('electr')) return '⚡';
+  if (t.includes('plumb') || t.includes('pipe')) return '🔧';
+  if (t.includes('ac') || t.includes('air con')) return '❄️';
+  if (t.includes('paint')) return '🎨';
+  if (t.includes('carpent') || t.includes('wood')) return '🪵';
+  if (t.includes('mason') || t.includes('cement')) return '🏗️';
+  if (t.includes('clean')) return '🧹';
+  if (t.includes('weld')) return '🔥';
+  if (t.includes('garden') || t.includes('farm')) return '🌱';
+  if (t.includes('cook')) return '🍳';
+  if (t.includes('driver') || t.includes('truck')) return '🚚';
+  return '📋';
+}
+
 export default function WorkerDashboardScreen() {
   const navigation = useNavigation<WorkerDashboardNavigationProp>();
   const user = useAppSelector((state: any) => state.profile.user);
@@ -67,7 +83,27 @@ export default function WorkerDashboardScreen() {
         <View style={[styles.circle, { width: 120, height: 120, bottom: -20, left: 40 }]} />
 
         <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })}
+            style={styles.homeBtn}
+          >
+            <Text style={{ fontSize: 18 }}>🏠</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.screenTitle}>Worker Dashboard</Text>
+          
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.navigate('Notifications' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 20 }}>🔔</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.shopProfileRow}>
+          <View style={styles.shopProfileLeft}>
             <TouchableOpacity 
               activeOpacity={0.7} 
               onPress={() => navigation.navigate('Profile')}
@@ -77,9 +113,10 @@ export default function WorkerDashboardScreen() {
             </TouchableOpacity>
             <View>
               <Text style={styles.workerName}>{workerName}</Text>
-              <Text style={styles.workerSub}>Service Worker Dashboard</Text>
+              <Text style={styles.workerSub}>View Profile & Settings</Text>
             </View>
           </View>
+          
           <View style={styles.verifiedBadge}>
             <Text style={styles.verifiedTxt}>✓ Verified</Text>
           </View>
@@ -149,7 +186,7 @@ export default function WorkerDashboardScreen() {
             {[
               { emoji: '🔧', label: 'Service', value: profile.service_category },
               { emoji: '💰', label: 'Rate', value: `₹${profile.hourly_rate}/hr` },
-              { emoji: '📅', label: 'Experience', value: `${profile.experience_years} Years` },
+              { emoji: '⏳', label: 'Experience', value: `${profile.experience_years} Years` },
               { emoji: '📍', label: 'Location', value: profile.location },
             ].map(row => (
               <View key={row.label} style={styles.detailRow}>
@@ -176,7 +213,7 @@ export default function WorkerDashboardScreen() {
           <View key={job.id} style={styles.jobCard}>
             <View style={styles.jobLeft}>
               {job.urgent && <StatusChip label="URGENT" type="red" />}
-              <Text style={styles.jobTitle}>{job.title}</Text>
+              <Text style={styles.jobTitle}>{getJobEmoji(job.title)} {job.title}</Text>
               <Text style={styles.jobLocation}>📍 {job.location}</Text>
               <Text style={styles.jobRate}>{job.rate}</Text>
             </View>
@@ -203,12 +240,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden', position: 'relative',
   },
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.07)' },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarTxt: { fontSize: 24 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg, zIndex: 1 },
+  screenTitle: { fontSize: 18, fontWeight: '800', color: Colors.white },
+  shopProfileRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md, zIndex: 1 },
+  shopProfileLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  homeBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  notifBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatar: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarTxt: { fontSize: 22 },
   workerName: { fontSize: 16, fontWeight: '800', color: Colors.white },
-  workerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  workerSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   verifiedBadge: { backgroundColor: Colors.greenPrimary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
   verifiedTxt: { color: Colors.white, fontSize: 10, fontWeight: '800' },
   availWrap: {
