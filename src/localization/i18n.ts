@@ -23,9 +23,9 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    // Set Tamil as default if no language was saved
-    lng: savedLanguage || 'ta',
-    fallbackLng: 'en',
+    // Language priority: Hindi first, then English, then Tamil as secondary fallback
+    lng: savedLanguage || 'hi',
+    fallbackLng: ['en', 'ta'],
     interpolation: {
       escapeValue: false, // react already safes from xss
     },

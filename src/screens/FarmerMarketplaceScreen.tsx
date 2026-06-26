@@ -3,11 +3,15 @@ import { View, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView, Linkin
 import { Text, Searchbar, Surface, Chip, useTheme, IconButton, Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { apiService } from '../services/apiService';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
 import { showToast } from '../utils/toast';
+import { ScreenHeader, EmptyState } from '../components/GoOneUI';
 import { StorageKeys, saveJSON, loadJSON } from '../services/storage';
 
 type FarmerMarketplaceNavigationProp = NativeStackNavigationProp<RootStackParamList, 'FarmerMarketplace'>;
@@ -15,6 +19,7 @@ type FarmerMarketplaceNavigationProp = NativeStackNavigationProp<RootStackParamL
 const CATEGORIES = ['All', 'Vegetables', 'Fruits', 'Rice', 'Seeds', 'Milk'];
 
 export default function FarmerMarketplaceScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation<FarmerMarketplaceNavigationProp>();
 
@@ -162,15 +167,10 @@ export default function FarmerMarketplaceScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={24}
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        />
-        <Text variant="titleLarge" style={styles.headerTitle}>Farmer Marketplace</Text>
-      </View>
+      <ScreenHeader
+        title={t('listings.farmers', 'Farmer Marketplace')}
+        onBack={() => navigation.goBack()}
+      />
 
       {/* Search */}
       <View style={styles.searchSection}>
@@ -236,12 +236,11 @@ export default function FarmerMarketplaceScreen() {
           maxToRenderPerBatch={5}
           windowSize={5}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="tractor-variant" size={64} color={theme.colors.onSurfaceVariant} />
-              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
-                No crops found
-              </Text>
-            </View>
+            <EmptyState 
+              icon="🌾" 
+              title={t('listings.noResults', 'No crops or farmers found')} 
+              subtitle={t('common.retry', 'Try searching something else')}
+            />
           }
         />
       )}

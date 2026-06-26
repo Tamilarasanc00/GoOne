@@ -3,15 +3,18 @@ import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView, Linking, Stat
 import { Text, Searchbar, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
-import { StatusChip, VoiceButton } from '../components/GoOneUI';
+import { StatusChip, VoiceButton, ScreenHeader, EmptyState } from '../components/GoOneUI';
+import { voiceService } from '../services/voiceService';
 
 const CATEGORIES = ['All', 'Construction', 'Farm Work', 'Loading', 'Driver', 'Helper', 'Electrician'];
 
 export default function DailyWageJobListingScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,22 +55,22 @@ export default function DailyWageJobListingScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}><Text style={{ fontSize: 24 }}>←</Text></TouchableOpacity>
-        <Text style={styles.headerTitle}>Daily Wage Jobs</Text>
-      </View>
+      <ScreenHeader
+        title={t('listings.jobs', 'Daily Wage Jobs')}
+        onBack={() => navigation.goBack()}
+      />
 
       {/* Search Bar */}
       <View style={styles.searchWrap}>
         <Searchbar
-          placeholder="Search jobs..."
+          placeholder={t('listings.searchJobs', 'Search jobs...')}
           onChangeText={setQuery}
           value={query}
           style={styles.searchBar}
           inputStyle={styles.searchInput}
           elevation={0}
         />
-        <VoiceButton size={44} onPress={() => showToast('Voice search')} />
+        <VoiceButton size={44} onPress={() => voiceService.startListening()} />
       </View>
 
       {/* Categories */}
@@ -115,10 +118,10 @@ export default function DailyWageJobListingScreen() {
 
               <View style={styles.cardActions}>
                 <TouchableOpacity style={styles.contactBtn} onPress={() => Linking.openURL('tel:1234567890')}>
-                  <Text style={styles.contactTxt}>📞 Contact</Text>
+                  <Text style={styles.contactTxt}>📞 {t('common.call', 'Call')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.applyBtn} onPress={() => handleApply(item.id, item.title)}>
-                  <Text style={styles.applyTxt}>✓ Apply Now</Text>
+                  <Text style={styles.applyTxt}>✓ {t('common.submit', 'Apply')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

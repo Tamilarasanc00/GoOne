@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, StatusBar } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { showToast } from '../utils/toast';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
 import { SectionHeader, StatusChip } from '../components/GoOneUI';
+import OfflineBanner from '../components/OfflineBanner';
 
 type WorkerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -44,18 +45,21 @@ export default function WorkerDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [error, setError] = useState(false);
+  const isFetching = useRef(false);
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
+    if (isFetching.current) return;
+    isFetching.current = true;
     setLoading(true); setError(false);
     try {
       const res = await apiService.workers.getMyProfile();
       if (res?.success) setProfile(res.profile);
       else setError(true);
     } catch { setError(true); }
-    finally { setLoading(false); }
-  };
+    finally { setLoading(false); isFetching.current = false; }
+  }, []);
 
-  useFocusEffect(useCallback(() => { loadProfile(); }, []));
+  useFocusEffect(useCallback(() => { loadProfile(); }, [loadProfile]));
 
   const handleToggle = async () => {
     if (toggling) return;
@@ -76,6 +80,7 @@ export default function WorkerDashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.purplePrimary} />
+      <OfflineBanner />
 
       {/* Purple gradient header */}
       <View style={styles.header}>

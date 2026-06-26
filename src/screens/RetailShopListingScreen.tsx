@@ -3,18 +3,23 @@ import { View, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView } from 
 import { Text, Searchbar, Surface, Chip, useTheme, IconButton, ActivityIndicator, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
+import Colors from '../constants/colors';
+import { Radius, Spacing } from '../constants/spacing';
 import { showToast } from '../utils/toast';
 import { StorageKeys, saveJSON, loadJSON } from '../services/storage';
 import { voiceService } from '../services/voiceService';
+import { ScreenHeader, EmptyState } from '../components/GoOneUI';
 
 type RetailShopListingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RetailShopListing'>;
 
 const CATEGORIES = ['All', 'Groceries', 'Hardware', 'Clothing', 'Electronics', 'Pharmacy'];
 
 export default function RetailShopListingScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation<RetailShopListingNavigationProp>();
 
@@ -134,23 +139,19 @@ export default function RetailShopListingScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={24}
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        />
-        <Text variant="titleLarge" style={styles.headerTitle}>Nearby Shops</Text>
-        <View style={{ flex: 1 }} />
-        <IconButton
-          icon="microphone"
-          size={24}
-          onPress={() => voiceService.startListening()}
-          iconColor={theme.colors.primary}
-        />
-      </View>
+      {/* Custom Header using GoOneUI */}
+      <ScreenHeader
+        title={t('listings.shops', 'Nearby Shops')}
+        onBack={() => navigation.goBack()}
+        rightAction={
+          <IconButton
+            icon="microphone"
+            size={24}
+            onPress={() => voiceService.startListening()}
+            iconColor={Colors.bluePrimary}
+          />
+        }
+      />
 
       {/* Search */}
       <View style={styles.searchSection}>
@@ -216,12 +217,11 @@ export default function RetailShopListingScreen() {
           maxToRenderPerBatch={5}
           windowSize={5}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="store-search-outline" size={64} color={theme.colors.onSurfaceVariant} />
-              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
-                No shops found
-              </Text>
-            </View>
+            <EmptyState 
+              icon="🏪" 
+              title={t('listings.noResults', 'No shops found')} 
+              subtitle={t('common.retry', 'Try searching something else')}
+            />
           }
         />
       )}

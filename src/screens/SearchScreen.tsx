@@ -6,7 +6,9 @@ import { useNavigation } from '@react-navigation/native';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
 import { SectionHeader, VoiceButton } from '../components/GoOneUI';
+import { useTranslation } from 'react-i18next';
 import { showToast } from '../utils/toast';
+import { voiceService } from '../services/voiceService';
 
 const RECENT_SEARCHES = ['Plumber', 'Tata Ace', 'Tomato seeds', 'Electrician', 'Ponni Rice'];
 const TRENDING_CATEGORIES = [
@@ -18,6 +20,7 @@ const TRENDING_CATEGORIES = [
 ];
 
 export default function SearchScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [recent, setRecent] = useState(RECENT_SEARCHES);
@@ -37,7 +40,7 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <View style={styles.searchBarWrap}>
           <Searchbar
-            placeholder="Search shops, services..."
+            placeholder={t('common.search', 'Search shops, services...')}
             onChangeText={handleSearch}
             value={searchQuery}
             style={styles.searchBar}
@@ -48,7 +51,7 @@ export default function SearchScreen() {
             placeholderTextColor={Colors.textMuted}
           />
           <View style={styles.voiceBtnWrap}>
-            <VoiceButton size={40} onPress={() => showToast('Voice search activated')} />
+            <VoiceButton size={40} onPress={() => voiceService.startListening()} />
           </View>
         </View>
       </View>

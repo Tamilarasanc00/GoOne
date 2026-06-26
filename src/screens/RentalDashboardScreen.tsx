@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image, StatusBar } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { showToast } from '../utils/toast';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
 import { SectionHeader, StatusChip } from '../components/GoOneUI';
+import OfflineBanner from '../components/OfflineBanner';
 
 const RENTAL_EMOJIS: Record<string, string> = {
   tractor: '🚜', harvester: '🚜', bike: '🏉️', bicycle: '🚲', motorcycle: '🏉️',
@@ -40,18 +41,21 @@ export default function RentalDashboardScreen() {
   const [rentals, setRentals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const isFetching = useRef(false);
 
-  const loadRentals = async () => {
+  const loadRentals = useCallback(async () => {
+    if (isFetching.current) return;
+    isFetching.current = true;
     setLoading(true); setError(false);
     try {
       const res = await apiService.rentals.listMyRentals();
       if (res?.success) setRentals(res.rentals || []);
       else setError(true);
     } catch { setError(true); }
-    finally { setLoading(false); }
-  };
+    finally { setLoading(false); isFetching.current = false; }
+  }, []);
 
-  useFocusEffect(useCallback(() => { loadRentals(); }, []));
+  useFocusEffect(useCallback(() => { loadRentals(); }, [loadRentals]));
 
   const handleDelete = (id: number, name: string) => {
     Alert.alert('Delete Listing', `Delete "${name}"?`, [
@@ -73,6 +77,7 @@ export default function RentalDashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.amberPrimary} />
+      <OfflineBanner />
 
       {/* Amber gradient header */}
       <View style={styles.header}>

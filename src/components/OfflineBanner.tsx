@@ -3,8 +3,10 @@ import { StyleSheet, View } from 'react-native';
 import { Surface, Text, useTheme } from 'react-native-paper';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTranslation } from 'react-i18next';
 
 export default function OfflineBanner() {
+  const { t } = useTranslation();
   const isConnected = useNetworkStatus();
   const theme = useTheme();
 
@@ -14,7 +16,7 @@ export default function OfflineBanner() {
     <Surface style={[styles.banner, { backgroundColor: theme.colors.error }]} elevation={2}>
       <View style={styles.content}>
         <MaterialCommunityIcons name="cloud-off-outline" size={18} color="#FFF" />
-        <Text style={styles.text}>Offline Mode - Showing Cached Data</Text>
+        <Text style={styles.text}>{t('common.offlineMode', 'Offline Mode - Showing Cached Data')}</Text>
       </View>
     </Surface>
   );

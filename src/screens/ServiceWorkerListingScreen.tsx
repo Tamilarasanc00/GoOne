@@ -3,15 +3,18 @@ import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView, Linking, Stat
 import { Text, Searchbar, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
-import { VoiceButton } from '../components/GoOneUI';
+import { VoiceButton, ScreenHeader, EmptyState } from '../components/GoOneUI';
+import { voiceService } from '../services/voiceService';
 
 const CATEGORIES = ['All', 'Electrician', 'Plumber', 'Carpenter', 'Painter', 'AC Repair', 'Mason', 'Welder'];
 
 export default function ServiceWorkerListingScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [workers, setWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,22 +55,22 @@ export default function ServiceWorkerListingScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}><Text style={{ fontSize: 24 }}>←</Text></TouchableOpacity>
-        <Text style={styles.headerTitle}>Services & Repairs</Text>
-      </View>
+      <ScreenHeader
+        title={t('listings.workers', 'Services & Repairs')}
+        onBack={() => navigation.goBack()}
+      />
 
       {/* Search Bar */}
       <View style={styles.searchWrap}>
         <Searchbar
-          placeholder="Search electricians, plumbers..."
+          placeholder={t('listings.searchWorkers', 'Search electricians, plumbers...')}
           onChangeText={setQuery}
           value={query}
           style={styles.searchBar}
           inputStyle={styles.searchInput}
           elevation={0}
         />
-        <VoiceButton size={44} onPress={() => showToast('Voice search')} />
+        <VoiceButton size={44} onPress={() => voiceService.startListening()} />
       </View>
 
       {/* Categories */}
@@ -117,10 +120,10 @@ export default function ServiceWorkerListingScreen() {
 
                 <View style={styles.cardActions}>
                   <TouchableOpacity style={styles.contactBtn} onPress={() => Linking.openURL(`tel:${item.phone}`)}>
-                    <Text style={styles.contactTxt}>📞 Call</Text>
+                    <Text style={styles.contactTxt}>📞 {t('listings.callNow', 'Call Now')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.bookBtn} onPress={() => handleBook(item.id, item.name)}>
-                    <Text style={styles.bookTxt}>✓ Book Now</Text>
+                    <Text style={styles.bookTxt}>✓ {t('listings.bookNow', 'Book Now')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

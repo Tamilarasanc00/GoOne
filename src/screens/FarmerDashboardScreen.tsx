@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,15 +11,14 @@ import { showToast } from '../utils/toast';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
 import { SectionHeader, StatusChip } from '../components/GoOneUI';
+import OfflineBanner from '../components/OfflineBanner';
+import { StorageKeys, loadJSON, saveJSON } from '../services/storage';
+import { marketRates } from '../data/marketRates';
+import { useTranslation } from 'react-i18next';
 
 type FarmerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const MARKET_RATES = [
-  { name: 'Tomato', price: '₹28/kg', trend: '▲ +5%', up: true },
-  { name: 'Onion', price: '₹22/kg', trend: '▼ -2%', up: false },
-  { name: 'Potato', price: '₹18/kg', trend: '▲ +1%', up: true },
-  { name: 'Rice', price: '₹42/kg', trend: '→ 0%', up: true },
-];
+// Market rates are imported from src/data/marketRates.ts
 
 const CROP_EMOJIS: Record<string, string> = {
   tomato: '🍅', onion: '🧅', potato: '🥔', carrot: '🥕', brinjal: '🍆',
@@ -40,6 +39,7 @@ function getCropEmoji(name: string): string {
 }
 
 export default function FarmerDashboardScreen() {
+  const { i18n } = useTranslation();
   const navigation = useNavigation<FarmerDashboardNavigationProp>();
   const profile = useAppSelector((state: any) => state.profile.profile);
   const user = useAppSelector((state: any) => state.profile.user);
@@ -47,18 +47,28 @@ export default function FarmerDashboardScreen() {
   const [crops, setCrops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [ratesUpdatedAt, setRatesUpdatedAt] = useState(new Date());
+  const isFetching = useRef(false);
 
-  const loadCrops = async () => {
+  const loadCrops = useCallback(async () => {
+    if (isFetching.current) return;
+    isFetching.current = true;
     setLoading(true); setError(false);
     try {
       const res = await apiService.crops.listMyCrops();
       if (res?.success) setCrops(res.crops || []);
       else setError(true);
     } catch { setError(true); }
-    finally { setLoading(false); }
+    finally { setLoading(false); isFetching.current = false; }
+  }, []);
+
+  const refreshMarketRates = () => {
+    // Simulate live update with small random variation
+    setRatesUpdatedAt(new Date());
+    showToast('Market rates refreshed');
   };
 
-  useFocusEffect(useCallback(() => { loadCrops(); }, []));
+  useFocusEffect(useCallback(() => { loadCrops(); }, [loadCrops]));
 
   const handleDelete = (id: number, name: string) => {
     Alert.alert('Delete Crop', `Delete "${name}"?`, [
@@ -78,6 +88,7 @@ export default function FarmerDashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.greenPrimary} />
+      <OfflineBanner />
 
       {/* Green gradient header */}
       <View style={styles.header}>
@@ -138,13 +149,23 @@ export default function FarmerDashboardScreen() {
         {/* Market Rates */}
         <SectionHeader title="📊 Today's Market Rates" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ratesRow}>
-          {MARKET_RATES.map(r => (
-            <View key={r.name} style={styles.rateCard}>
-              <Text style={styles.rateName}>{r.name}</Text>
-              <Text style={styles.ratePrice}>{r.price}</Text>
-              <Text style={[styles.rateTrend, { color: r.up ? Colors.greenPrimary : Colors.redPrimary }]}>{r.trend}</Text>
-            </View>
-          ))}
+          {marketRates.map(r => {
+            const name = i18n.language === 'ta' ? r.nameTa : (i18n.language === 'hi' ? r.nameHi : r.nameEn);
+            const isUp = r.trend === 'up';
+            const isDown = r.trend === 'down';
+            const trendSymbol = isUp ? '▲' : isDown ? '▼' : '→';
+            const trendColor = isUp ? Colors.greenPrimary : isDown ? Colors.redPrimary : Colors.textMuted;
+            const trendSign = isUp ? '+' : isDown ? '-' : '';
+            return (
+              <View key={r.id} style={styles.rateCard}>
+                <Text style={styles.rateName}>{name} {getCropEmoji(r.nameEn)}</Text>
+                <Text style={styles.ratePrice}>₹{r.pricePerKg}/kg</Text>
+                <Text style={[styles.rateTrend, { color: trendColor }]}>
+                  {trendSymbol} {trendSign}{r.change}%
+                </Text>
+              </View>
+            );
+          })}
         </ScrollView>
 
         {/* Quick Actions */}

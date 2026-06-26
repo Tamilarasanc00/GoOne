@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -21,6 +21,7 @@ import { showToast } from '../utils/toast';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
 import { SectionHeader, StatusChip } from '../components/GoOneUI';
+import OfflineBanner from '../components/OfflineBanner';
 
 type RetailerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -41,9 +42,12 @@ export default function RetailerDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
+  const isFetching = useRef(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!shopProfile?.id) { setLoading(false); return; }
+    if (isFetching.current) return;
+    isFetching.current = true;
     setLoading(true); setError(false);
     try {
       const [productsRes, offersRes] = await Promise.all([
@@ -55,15 +59,14 @@ export default function RetailerDashboardScreen() {
       else setError(true);
       
       if (offersRes?.success) {
-        // Filter offers for this shop
         const shopOffers = (offersRes.offers || []).filter((o: any) => o.shop_name === (shopProfile.name || 'My Shop'));
         setOffers(shopOffers);
       }
     } catch { setError(true); }
-    finally { setLoading(false); }
-  };
+    finally { setLoading(false); isFetching.current = false; }
+  }, [shopProfile?.id, shopProfile?.name]);
 
-  useFocusEffect(useCallback(() => { loadData(); }, [shopProfile]));
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   const handleDelete = (id: number, name: string) => {
     Alert.alert('Delete Product', `Delete "${name}"?`, [
@@ -85,6 +88,7 @@ export default function RetailerDashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bluePrimary} />
+      <OfflineBanner />
 
       {/* Header */}
       <View style={styles.header}>

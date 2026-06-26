@@ -30,6 +30,7 @@ import CreateProfileScreen from '../screens/CreateProfileScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
 import AddJobScreen from '../screens/AddJobScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import HelpSupportScreen from '../screens/HelpSupportScreen';
 import { storage, StorageKeys } from '../services/storage';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -74,6 +75,7 @@ export default function RootNavigator() {
       <Stack.Screen name="EmployerDashboard" component={EmployerDashboardScreen} />
       <Stack.Screen name="AddJob" component={AddJobScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
     </Stack.Navigator>
   );
 }

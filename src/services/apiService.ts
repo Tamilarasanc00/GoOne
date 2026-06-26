@@ -9,7 +9,7 @@ import { showToast } from '../utils/toast';
 // ----------------------------------------------------------------------------
 export const client = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 20000, // Increased for rural low-bandwidth networks
   headers: {
     'Content-Type': 'application/json',
   },

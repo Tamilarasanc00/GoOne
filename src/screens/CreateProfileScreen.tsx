@@ -39,6 +39,8 @@ export default function CreateProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [modalVis, setModalVis] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [locationMode, setLocationMode] = useState<'auto' | 'manual'>('auto');
 
   // Dropdown State
   const [selectModalVis, setSelectModalVis] = useState(false);
@@ -77,12 +79,32 @@ export default function CreateProfileScreen() {
   }, [isEdit, userState, profileState]);
 
   const handleGPS = () => {
-    showToast('Fetching GPS...');
+    setGpsLoading(true);
+    showToast('Fetching GPS location...');
     Geolocation.getCurrentPosition(
-      pos => { setForm({ ...form, lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) }); },
-      err => { setForm({ ...form, lat: '11.6643', lng: '78.1460' }); showToast('Using default coordinates (Salem)'); },
-      { enableHighAccuracy: false, timeout: 8000 }
+      pos => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        setForm(f => ({ ...f, lat, lng }));
+        showToast(`📍 Location found: ${lat}, ${lng}`);
+        setGpsLoading(false);
+      },
+      err => {
+        // Default to Salem, Tamil Nadu as fallback
+        setForm(f => ({ ...f, lat: '11.6643', lng: '78.1460', village: f.village || 'Salem, Tamil Nadu' }));
+        showToast('GPS unavailable. Using default (Salem)');
+        setGpsLoading(false);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
     );
+  };
+
+  const validateLatLng = (lat: string, lng: string): boolean => {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (isNaN(latNum) || isNaN(lngNum)) return false;
+    // India bounds: lat 8–37, lng 68–97
+    return latNum >= 8 && latNum <= 37 && lngNum >= 68 && lngNum <= 97;
   };
 
   const handleImagePick = (type: 'camera' | 'gallery') => {
@@ -250,11 +272,42 @@ export default function CreateProfileScreen() {
         {/* Location */}
         <SectionHeader title="Location" />
         <View style={styles.card}>
-          <View style={styles.row}>
-            <TextInput mode="outlined" label="Lat" value={form.lat} onChangeText={t => setForm({ ...form, lat: t })} style={[styles.input, { flex: 1, marginRight: 8 }]} activeOutlineColor={Colors.bluePrimary} />
-            <TextInput mode="outlined" label="Lng" value={form.lng} onChangeText={t => setForm({ ...form, lng: t })} style={[styles.input, { flex: 1, marginLeft: 8 }]} activeOutlineColor={Colors.bluePrimary} />
+          <View style={styles.locationTabs}>
+            <TouchableOpacity 
+              style={[styles.locTab, locationMode === 'auto' && styles.locTabActive]} 
+              onPress={() => setLocationMode('auto')}
+            >
+              <Text style={[styles.locTabTxt, locationMode === 'auto' && styles.locTabTxtActive]}>Auto GPS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.locTab, locationMode === 'manual' && styles.locTabActive]} 
+              onPress={() => setLocationMode('manual')}
+            >
+              <Text style={[styles.locTabTxt, locationMode === 'manual' && styles.locTabTxtActive]}>Manual</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.gpsBtn} onPress={handleGPS}><Text style={styles.gpsTxt}>📍 Get Current GPS Location</Text></TouchableOpacity>
+
+          {locationMode === 'auto' ? (
+            <View style={styles.autoLocBox}>
+              <TouchableOpacity style={styles.gpsBtn} onPress={handleGPS} disabled={gpsLoading}>
+                {gpsLoading ? <ActivityIndicator color={Colors.bluePrimary} size="small" /> : <Text style={styles.gpsTxt}>📍 Detect My Location</Text>}
+              </TouchableOpacity>
+              {form.lat && form.lng ? (
+                <Text style={styles.coordTxt}>Current: {form.lat}, {form.lng}</Text>
+              ) : null}
+            </View>
+          ) : (
+            <View>
+              <TextInput mode="outlined" label="Village / Town Name *" value={form.village || ''} onChangeText={t => setForm({ ...form, village: t })} style={styles.input} activeOutlineColor={Colors.bluePrimary} />
+              <View style={styles.row}>
+                <TextInput mode="outlined" label="Lat (8-37)" value={form.lat} onChangeText={t => setForm({ ...form, lat: t })} style={[styles.input, { flex: 1, marginRight: 8 }]} activeOutlineColor={Colors.bluePrimary} keyboardType="numeric" />
+                <TextInput mode="outlined" label="Lng (68-97)" value={form.lng} onChangeText={t => setForm({ ...form, lng: t })} style={[styles.input, { flex: 1, marginLeft: 8 }]} activeOutlineColor={Colors.bluePrimary} keyboardType="numeric" />
+              </View>
+              {(!validateLatLng(form.lat, form.lng) && form.lat && form.lng) ? (
+                <HelperText type="error" visible={true}>Coordinates must be within India bounds</HelperText>
+              ) : null}
+            </View>
+          )}
         </View>
 
         {/* Dynamic Role Fields */}
@@ -381,6 +434,14 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   gpsBtn: { backgroundColor: Colors.blueSoft, borderRadius: Radius.md, paddingVertical: 12, alignItems: 'center', marginTop: 4 },
   gpsTxt: { fontSize: 13, fontWeight: '700', color: Colors.bluePrimary },
+  
+  locationTabs: { flexDirection: 'row', backgroundColor: Colors.bgLight, borderRadius: Radius.md, padding: 4, marginBottom: 16 },
+  locTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.sm },
+  locTabActive: { backgroundColor: Colors.white, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+  locTabTxt: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+  locTabTxtActive: { color: Colors.bluePrimary },
+  autoLocBox: { alignItems: 'center', paddingVertical: 8 },
+  coordTxt: { fontSize: 12, color: Colors.textSecondary, marginTop: 12, fontStyle: 'italic' },
 
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   switchLbl: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },

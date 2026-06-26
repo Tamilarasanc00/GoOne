@@ -228,9 +228,84 @@ export function StatusChip({ label, type = 'blue' }: StatusChipProps) {
 }
 
 // ─── Pull Tab ─────────────────────────────────────────────────────────────────
-export function PullTab({ color = Colors.border }: { color?: string }) {
+export function PullTab({ color = Colors.border, style }: { color?: string; style?: ViewStyle }) {
   return (
-    <View style={[styles.pullTab, { backgroundColor: color }]} />
+    <View style={[styles.pullTab, { backgroundColor: color }, style]} />
+  );
+}
+
+// ─── Screen Header ────────────────────────────────────────────────────────
+export function ScreenHeader({ 
+  title, 
+  onBack,
+  rightAction,
+}: { 
+  title: string; 
+  onBack?: () => void;
+  rightAction?: React.ReactNode;
+}) {
+  return (
+    <View style={styles.screenHeader}>
+      {onBack && (
+        <TouchableOpacity onPress={onBack} style={styles.screenBackBtn}>
+          <Text style={{ fontSize: 24 }}>←</Text>
+        </TouchableOpacity>
+      )}
+      <Text style={styles.screenHeaderTitle}>{title}</Text>
+      <View style={styles.screenHeaderRight}>
+        {rightAction}
+      </View>
+    </View>
+  );
+}
+
+// ─── Empty State ────────────────────────────────────────────────────────────
+export function EmptyState({ 
+  icon, 
+  title, 
+  subtitle,
+  actionLabel,
+  onAction
+}: { 
+  icon: string; 
+  title: string; 
+  subtitle?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateIcon}>{icon}</Text>
+      <Text style={styles.emptyStateTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.emptyStateSub}>{subtitle}</Text> : null}
+      {actionLabel && onAction && (
+        <TouchableOpacity style={styles.emptyStateBtn} onPress={onAction}>
+          <Text style={styles.emptyStateBtnTxt}>{actionLabel}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+// ─── Loading Skeleton ───────────────────────────────────────────────────────
+export function LoadingSkeleton({ 
+  type = 'list', 
+  count = 3 
+}: { 
+  type?: 'list' | 'grid' | 'card'; 
+  count?: number; 
+}) {
+  return (
+    <View style={styles.skeletonContainer}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View key={i} style={[
+          styles.skeletonBase, 
+          type === 'list' && styles.skeletonList,
+          type === 'grid' && styles.skeletonGrid,
+          type === 'card' && styles.skeletonCard
+        ]} />
+      ))}
+    </View>
   );
 }
 
@@ -341,4 +416,43 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: Spacing.md,
   },
+
+  // Screen Header
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  screenBackBtn: { paddingRight: Spacing.md, paddingVertical: 4 },
+  screenHeaderTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, flex: 1 },
+  screenHeaderRight: { minWidth: 40, alignItems: 'flex-end' },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+    marginTop: Spacing.xl,
+  },
+  emptyStateIcon: { fontSize: 48, marginBottom: 12 },
+  emptyStateTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
+  emptyStateSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', marginBottom: 20 },
+  emptyStateBtn: {
+    backgroundColor: Colors.blueSoft,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: Radius.full,
+  },
+  emptyStateBtnTxt: { color: Colors.bluePrimary, fontWeight: '700', fontSize: 14 },
+
+  // Loading Skeleton
+  skeletonContainer: { gap: Spacing.md, padding: Spacing.sm },
+  skeletonBase: { backgroundColor: Colors.border, borderRadius: Radius.md, opacity: 0.5 },
+  skeletonList: { height: 80, width: '100%' },
+  skeletonGrid: { height: 120, width: '47%' },
+  skeletonCard: { height: 160, width: '100%' },
 });

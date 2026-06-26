@@ -28,4 +28,5 @@ export type RootStackParamList = {
   AddJob: { jobId?: string } | undefined;
   CreateProfile: { isEdit?: boolean } | undefined;
   Notifications: undefined;
+  HelpSupport: undefined;
 };

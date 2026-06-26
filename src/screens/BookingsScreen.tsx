@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
 import Colors from '../constants/colors';
 import { Radius, Spacing } from '../constants/spacing';
-import { StatusChip } from '../components/GoOneUI';
+import { StatusChip, ScreenHeader, EmptyState } from '../components/GoOneUI';
 
 type TabStatus = 'Pending' | 'Accepted' | 'Completed' | 'Cancelled';
 const TABS: TabStatus[] = ['Pending', 'Accepted', 'Completed', 'Cancelled'];
@@ -32,6 +33,7 @@ function getServiceEmoji(service: string): string {
 }
 
 export default function BookingsScreen() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabStatus>('Pending');
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,9 +77,7 @@ export default function BookingsScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Bookings</Text>
-      </View>
+      <ScreenHeader title={t('navigation.bookings', 'My Bookings')} />
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
@@ -102,10 +102,10 @@ export default function BookingsScreen() {
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.bluePrimary]} />}
           ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Text style={{ fontSize: 64 }}>{TAB_EMOJIS[activeTab]}</Text>
-              <Text style={styles.emptyTxt}>No {activeTab.toLowerCase()} bookings</Text>
-            </View>
+            <EmptyState 
+              icon={TAB_EMOJIS[activeTab]} 
+              title={`No ${activeTab.toLowerCase()} bookings`}
+            />
           }
           renderItem={({ item }) => (
             <View style={styles.card}>

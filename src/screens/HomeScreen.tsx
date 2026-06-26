@@ -24,14 +24,14 @@ import { voiceService } from '../services/voiceService';
 const { width } = Dimensions.get('window');
 
 const CATEGORIES = [
-  { id: 'shops', name: 'Shops', emoji: '🏪', color: Colors.bluePrimary, screen: 'RetailShopListing' },
-  { id: 'farmers', name: 'Farmers', emoji: '🌾', color: Colors.greenPrimary, screen: 'FarmerMarketplace' },
-  { id: 'services', name: 'Services', emoji: '🔧', color: Colors.purplePrimary, screen: 'ServiceWorkerListing' },
-  { id: 'rentals', name: 'Rentals', emoji: '🚜', color: Colors.amberPrimary, screen: 'RentalMarketplace' },
-  { id: 'jobs', name: 'Jobs', emoji: '👷', color: Colors.orangePrimary, screen: 'DailyWageJobListing' },
-  { id: 'sos', name: 'SOS Help', emoji: '🆘', color: Colors.redPrimary, screen: 'NearbyHelp' },
-  { id: 'offers', name: 'Offers', emoji: '🎁', color: Colors.magentaPrimary, screen: null },
-  { id: 'market', name: 'Market', emoji: '📊', color: Colors.blueDeep, screen: null },
+  { id: 'shops', nameKey: 'dashboard.shops', emoji: '🏪', color: Colors.bluePrimary, screen: 'RetailShopListing' },
+  { id: 'farmers', nameKey: 'dashboard.farmers', emoji: '🌾', color: Colors.greenPrimary, screen: 'FarmerMarketplace' },
+  { id: 'services', nameKey: 'dashboard.services', emoji: '🔧', color: Colors.purplePrimary, screen: 'ServiceWorkerListing' },
+  { id: 'rentals', nameKey: 'dashboard.rentals', emoji: '🚜', color: Colors.amberPrimary, screen: 'RentalMarketplace' },
+  { id: 'jobs', nameKey: 'dashboard.jobs', emoji: '👷', color: Colors.orangePrimary, screen: 'DailyWageJobListing' },
+  { id: 'sos', nameKey: 'dashboard.nearbyHelp', emoji: '🆘', color: Colors.redPrimary, screen: 'NearbyHelp' },
+  { id: 'help', nameKey: 'help.title', emoji: '🤖', color: Colors.blueDeep, screen: 'HelpSupport' },
+  { id: 'offers', nameKey: 'dashboard.offers', emoji: '🎁', color: Colors.magentaPrimary, screen: null },
 ];
 
 const GREETING_MAP: { [k: number]: string } = {
@@ -187,7 +187,7 @@ export default function HomeScreen() {
                 <View style={[styles.catIconWrap, { backgroundColor: cat.color + '15' }]}>
                   <Text style={styles.catEmoji}>{cat.emoji}</Text>
                 </View>
-                <Text style={styles.catName}>{t(`dashboard.${cat.id}`, cat.name)}</Text>
+                <Text style={styles.catName}>{t(cat.nameKey, cat.id)}</Text>
               </TouchableOpacity>
             ))}
           </View>

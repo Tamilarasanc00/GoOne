@@ -3,18 +3,22 @@ import { View, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView, Linkin
 import { Text, Searchbar, Surface, Chip, useTheme, IconButton, Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { apiService } from '../services/apiService';
 import { showToast } from '../utils/toast';
 import { StorageKeys, saveJSON, loadJSON } from '../services/storage';
+import { ScreenHeader, EmptyState } from '../components/GoOneUI';
+import Colors from '../constants/colors';
 
 type RentalMarketplaceNavigationProp = NativeStackNavigationProp<RootStackParamList, 'RentalMarketplace'>;
 
 const CATEGORIES = ['All', 'Tractor', 'Bike', 'Mini Truck', 'JCB', 'Water Tanker', 'Farming Tools'];
 
 export default function RentalMarketplaceScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation<RentalMarketplaceNavigationProp>();
 
@@ -136,20 +140,15 @@ export default function RentalMarketplaceScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={24}
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        />
-        <Text variant="titleLarge" style={styles.headerTitle}>Equipment Rentals</Text>
-      </View>
+      <ScreenHeader
+        title={t('listings.rentals', 'Equipment Rentals')}
+        onBack={() => navigation.goBack()}
+      />
 
       {/* Search */}
       <View style={styles.searchSection}>
         <Searchbar
-          placeholder="Search tractors, bikes, JCBs..."
+          placeholder={t('listings.searchRentals', 'Search tractors, bikes, JCBs...')}
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={styles.searchBar}
@@ -210,12 +209,11 @@ export default function RentalMarketplaceScreen() {
           maxToRenderPerBatch={5}
           windowSize={5}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="tractor-variant" size={64} color={theme.colors.onSurfaceVariant} />
-              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
-                No rentals found
-              </Text>
-            </View>
+            <EmptyState 
+              icon="🚜" 
+              title={t('listings.noResults', 'No rentals found')} 
+              subtitle={t('common.retry', 'Try searching something else')}
+            />
           }
         />
       )}

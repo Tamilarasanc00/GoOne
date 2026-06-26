@@ -22,18 +22,18 @@ import { GoOneButton } from '../components/GoOneUI';
 type LanguageSelectionNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LanguageSelection'>;
 
 const LANGUAGES = [
-  { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳', accent: Colors.magentaPrimary },
+  { code: 'hi', name: 'Hindi', native: 'हिंदी', flag: '🇮🇳', accent: Colors.greenPrimary },
   { code: 'en', name: 'English', native: 'English', flag: '🇬🇧', accent: Colors.bluePrimary },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳', accent: Colors.magentaPrimary },
   { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳', accent: Colors.orangePrimary },
   { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳', accent: Colors.purplePrimary },
-  { code: 'hi', name: 'Hindi', native: 'हिंदी', flag: '🇮🇳', accent: Colors.greenPrimary },
   { code: 'ml', name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳', accent: Colors.amberPrimary },
 ];
 
 export default function LanguageSelectionScreen() {
   const { i18n } = useTranslation();
   const navigation = useNavigation<LanguageSelectionNavigationProp>();
-  const [selected, setSelected] = useState('ta');
+  const [selected, setSelected] = useState('hi');
 
   useEffect(() => {
     const saved = storage.getString(StorageKeys.LANGUAGE);
